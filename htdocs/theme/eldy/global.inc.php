@@ -23,6 +23,7 @@
 	--colortexttitlenotab2: rgb(<?php print $colortexttitlenotab2; ?>);
 	--colortexttitle: rgb(<?php print $colortexttitle; ?>);
 	--colortext: rgb(<?php print $colortext; ?>);
+	--colortextselect2: rgb(<?php print $colortext; ?>);
 	--colortextlink: rgb(<?php print $colortextlink; ?>);
 	--colortextbackhmenu: #<?php echo $colortextbackhmenu; ?>;
 	--colortextbackvmenu: #<?php print $colortextbackvmenu; ?>;
@@ -42,6 +43,7 @@
 	--amountremaintopaycolor:#880000;
 	--amountpaymentcomplete:#008800;
 	--amountremaintopaybackcolor:none;
+	--formconsumeproducebg: #f3f3f3;
 }
 
 <?php
@@ -66,6 +68,7 @@ if (!empty($conf->global->MAIN_THEME_DARKMODEENABLED)) {
 	            --colortexttitlenotab2: rgb(220,220,220);
 	            --colortexttitle: rgb(220,220,220);
 	            --colortext: rgb(220,220,220);
+	            --colortextselect2: rgb(0,0,0);
 	            --colortextlink: #4390dc;
 	            --colortextbackhmenu: rgb(220,220,220);
 	            --colortextbackvmenu: rgb(220,220,220);
@@ -84,6 +87,7 @@ if (!empty($conf->global->MAIN_THEME_DARKMODEENABLED)) {
 	            --amountremaintopaycolor:rgb(252,84,91);
 	            --amountpaymentcomplete:rgb(101,184,77);
 	            --amountremaintopaybackcolor:rbg(245,130,46);
+	            --formconsumeproducebg:rbg(93, 79, 50);
 	      }
 	    }";
 }
@@ -411,7 +415,7 @@ input#onlinepaymenturl, input#directdownloadlink {
 }
 
 .formconsumeproduce {
-	background: #f3f3f3;
+	background: var(--formconsumeproducebg);
     padding: 20px 0px 0px 0px;
 }
 
@@ -5152,10 +5156,10 @@ span#select2-taskid-container[title^='--'] {
 
 .select2-container--default .select2-results__option--highlighted[aria-selected] {
     background-color: rgb(<?php echo $colorbackhmenu1 ?>);
-    color: #<?php echo $colortextbackhmenu; ?>;
+    color: var(--colortextselect2) ;
 }
 .select2-container--default .select2-results__option--highlighted[aria-selected] span {
-    color: #fff !important;
+    color: var(--colortextselect2) !important;
 }
 
 span.select2.select2-container.select2-container--default {
@@ -5190,7 +5194,7 @@ input.select2-input {
     background-color: var(--colorbackvmenu1);
 }
 .select2-container--default .select2-selection--single .select2-selection__rendered {
-    color: var(--colortext);
+    color: var(--colortextselect2);
     /* background-color: var(--colorbackvmenu1); */
 }
 .select2-default {
@@ -5210,7 +5214,7 @@ input.select2-input {
 	background-image: none;
 }
 .select2-container .select2-choice {
-	color: var(--colortext);
+	color: var(--colortextselect2);
 	border-radius: 0;
 }
 .selectoptiondisabledwhite {
@@ -5275,7 +5279,7 @@ input.select2-input {
 	-webkit-box-shadow: none !important;
 	box-shadow: none !important;
 	border-radius: 0 !important;
-	color: black;
+	color: var(--colortext);
 }
 .select2-container-active .select2-choice, .select2-container-active .select2-choices
 {
@@ -5370,6 +5374,7 @@ a span.select2-chosen
 }
 .select2-container--default .select2-results>.select2-results__options{
     max-height: 400px;
+    color: var(--colortextselect2);
 }
 
 /* Special case for the select2 add widget */
@@ -5378,7 +5383,7 @@ a span.select2-chosen
     opacity: 0.4;
 }
 .select2-container--default .select2-selection--single .select2-selection__placeholder {
-	color: var(--colortext);
+	color: var(--colortextselect2);
 	opacity: 0.4;
 }
 span#select2-boxbookmark-container, span#select2-boxcombo-container {
