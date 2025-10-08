@@ -175,6 +175,7 @@ ProductIsUsed=Ce produit est utilisé
 NewRefForClone=Réf. du nouveau produit/service
 SellingPrices=Prix de vente
 BuyingPrices=Prix d'achat
+PermissionConsultSupplierBuyingPrices=Consulter les prix d'achat
 CustomerPrices=Prix clients
 SuppliersPrices=Prix fournisseurs
 SuppliersPricesOfProductsOrServices=Prix fournisseurs (des produits ou services)

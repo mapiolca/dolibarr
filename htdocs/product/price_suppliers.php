@@ -121,16 +121,37 @@ if ($id > 0 || $ref) {
 
 $usercanread = (($object->type == Product::TYPE_PRODUCT && $user->hasRight('produit', 'lire')) || ($object->type == Product::TYPE_SERVICE && $user->hasRight('service', 'lire')));
 $usercancreate = (($object->type == Product::TYPE_PRODUCT && $user->hasRight('produit', 'creer')) || ($object->type == Product::TYPE_SERVICE && $user->hasRight('service', 'creer')));
+// Allow supplier price consultation right without creation capability / Permet la consultation des prix fournisseurs sans droit de création
+$usercanconsultsuppliers = (bool) $usercancreate;
+if ($prod->id > 0) {
+        if ($prod->type == Product::TYPE_PRODUCT) {
+                if (getDolGlobalString('MAIN_USE_ADVANCED_PERMS')) {
+                        $usercanconsultsuppliers = $usercanconsultsuppliers || $user->hasRight('product', 'product_advance', 'read_supplier_prices') || $user->hasRight('product', 'product_advance', 'consult_supplier_prices');
+                } else {
+                        $usercanconsultsuppliers = $usercanconsultsuppliers || $user->hasRight('produit', 'lire');
+                }
+        } elseif ($prod->type == Product::TYPE_SERVICE) {
+                if (getDolGlobalString('MAIN_USE_ADVANCED_PERMS')) {
+                        $usercanconsultsuppliers = $usercanconsultsuppliers || $user->hasRight('service', 'service_advance', 'read_supplier_prices') || $user->hasRight('service', 'service_advance', 'consult_supplier_prices');
+                } else {
+                        $usercanconsultsuppliers = $usercanconsultsuppliers || $user->hasRight('service', 'lire');
+                }
+        }
+}
 
 if ($object->id > 0) {
-	if ($object->type == $object::TYPE_PRODUCT) {
-		restrictedArea($user, 'produit', $object->id, 'product&product', '', '');
-	}
-	if ($object->type == $object::TYPE_SERVICE) {
-		restrictedArea($user, 'service', $object->id, 'product&product', '', '');
-	}
+        if ($object->type == $object::TYPE_PRODUCT) {
+                restrictedArea($user, 'produit', $object->id, 'product&product', '', '');
+        }
+        if ($object->type == $object::TYPE_SERVICE) {
+                restrictedArea($user, 'service', $object->id, 'product&product', '', '');
+        }
 } else {
-	restrictedArea($user, 'produit|service', $fieldvalue, 'product&product', '', '', $fieldtype);
+        restrictedArea($user, 'produit|service', $fieldvalue, 'product&product', '', '', $fieldtype);
+}
+
+if (getDolGlobalString('MAIN_USE_ADVANCED_PERMS') && empty($usercanconsultsuppliers)) {
+        accessforbidden();
 }
 
 

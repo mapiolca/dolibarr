@@ -8,6 +8,7 @@ For users:
 ----------
 
 
+* NEW: Ajout de la permission "Consulter les prix d'achat" pour permettre la consultation des prix fournisseurs sans droit de création.
 
 For developers:
 ---------------

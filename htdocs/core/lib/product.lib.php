@@ -43,13 +43,14 @@ function product_prepare_head($object)
 	$langs->load("products");
 
 	$label = $langs->trans('Product');
-	$usercancreadprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? $user->hasRight('product', 'product_advance', 'read_prices') : $user->hasRight('product', 'read');
-	$usercancreadsupplierprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? $user->hasRight('product', 'product_advance', 'read_supplier_prices') : $user->hasRight('product', 'read');
+        $usercancreadprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? $user->hasRight('product', 'product_advance', 'read_prices') : $user->hasRight('product', 'read');
+        // Allow supplier price consultation with dedicated permission when advanced rights are enabled / Permet la consultation des prix fournisseurs avec la permission dédiée lorsque les droits avancés sont activés
+        $usercancreadsupplierprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? ($user->hasRight('product', 'product_advance', 'read_supplier_prices') || $user->hasRight('product', 'product_advance', 'consult_supplier_prices')) : $user->hasRight('product', 'read');
 
 	if ($object->isService()) {
 		$label = $langs->trans('Service');
-		$usercancreadprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? $user->hasRight('service', 'service_advance', 'read_prices') : $user->hasRight('service', 'read');
-		$usercancreadsupplierprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? $user->hasRight('service', 'service_advance', 'read_supplier_prices') : $user->hasRight('service', 'read');
+                $usercancreadprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? $user->hasRight('service', 'service_advance', 'read_prices') : $user->hasRight('service', 'read');
+                $usercancreadsupplierprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? ($user->hasRight('service', 'service_advance', 'read_supplier_prices') || $user->hasRight('service', 'service_advance', 'consult_supplier_prices')) : $user->hasRight('service', 'read');
 	}
 
 	$h = 0;

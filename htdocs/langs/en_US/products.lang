@@ -170,6 +170,7 @@ ProductIsUsed=This product is used
 NewRefForClone=Ref. of new product/service
 SellingPrices=Selling prices
 BuyingPrices=Buying prices
+PermissionConsultSupplierBuyingPrices=View supplier buying prices
 CustomerPrices=Customer prices
 SuppliersPrices=Vendor prices
 SuppliersPricesOfProductsOrServices=Vendor prices (of products or services)
