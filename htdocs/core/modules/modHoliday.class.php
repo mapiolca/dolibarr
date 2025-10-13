@@ -45,7 +45,7 @@ class modHoliday extends DolibarrModules
 	 */
 	public function __construct($db)
 	{
-		global $conf, $user; // Required by some include code
+		global $conf; // Required by some include code
 
 		$this->db = $db;
 
@@ -310,8 +310,6 @@ class modHoliday extends DolibarrModules
 	 */
 	public function init($options = '')
 	{
-		global $conf;
-
 		// Permissions
 		$this->remove($options);
 

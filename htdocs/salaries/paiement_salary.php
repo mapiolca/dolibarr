@@ -1,8 +1,8 @@
 <?php
 /* Copyright (C) 2004-2014  Laurent Destailleur     <eldy@users.sourceforge.net>
- * Copyright (C) 2016-2024  Frédéric France         <frederic.france@free.fr>
+ * Copyright (C) 2016-2025  Frédéric France         <frederic.france@free.fr>
  * Copyright (C) 2021		Gauthier VERDOL         <gauthier.verdol@atm-consulting.fr>
- * Copyright (C) 2024		MDW						<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2024-2025	MDW						<mdeweerd@users.noreply.github.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,8 +50,8 @@ $ref = GETPOST('ref', 'alpha');
 $amounts = array();
 
 $object = new Salary($db);
-if ($id > 0 || !empty($ref)) {
-	$object->fetch($id, $ref);
+if ($id > 0) {
+	$object->fetch($id);
 }
 
 // Security check
@@ -172,9 +172,8 @@ $sumpaid = 0.0;
 // Formulaire de creation d'un paiement de charge
 if ($action == 'create') {
 	$salary->accountid = $salary->fk_account ? $salary->fk_account : $salary->accountid;
-	$salary->paiementtype = $salary->mode_reglement_id ? $salary->mode_reglement_id : $salary->paiementtype;
+	$salary->fk_typepayment = $salary->mode_reglement_id ? $salary->mode_reglement_id : $salary->paiementtype;
 
-	$total = $salary->amount;
 	if (!empty($conf->use_javascript_ajax)) {
 		print "\n".'<script type="text/javascript">';
 
@@ -190,7 +189,6 @@ if ($action == 'create') {
 	}
 
 	print load_fiche_titre($langs->trans("DoPayment"));
-	print "<br>\n";
 
 	print '<form name="add_payment" action="'.$_SERVER['PHP_SELF'].'" method="post">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
@@ -203,9 +201,9 @@ if ($action == 'create') {
 	print '<table class="border centpercent">';
 
 	print '<tr><td class="titlefieldcreate">'.$langs->trans("Ref").'</td><td><a href="'.DOL_URL_ROOT.'/salaries/card.php?id='.$id.'">'.$id.'</a></td></tr>';
+	print '<tr><td>'.$langs->trans("Label").'</td><td>'.$salary->label."</td></tr>\n";
 	print '<tr><td>'.$langs->trans("DateStart")."</td><td>".dol_print_date($salary->datesp, 'day')."</td></tr>\n";
 	print '<tr><td>'.$langs->trans("DateEnd")."</td><td>".dol_print_date($salary->dateep, 'day')."</td></tr>\n";
-	print '<tr><td>'.$langs->trans("Label").'</td><td>'.$salary->label."</td></tr>\n";
 	/*print '<tr><td>'.$langs->trans("DateDue")."</td><td>".dol_print_date($salary->date_ech,'day')."</td></tr>\n";
 	print '<tr><td>'.$langs->trans("Amount")."</td><td>".price($salary->amount,0,$outputlangs,1,-1,-1,$conf->currency).'</td></tr>';*/
 
@@ -237,7 +235,7 @@ if ($action == 'create') {
 	print '<td class="fieldrequired">'.$langs->trans('AccountToDebit').'</td>';
 	print '<td>';
 	print img_picto('', 'bank_account', 'class="pictofixedwidth"');
-	$form->select_comptes(GETPOSTISSET("accountid") ? GETPOSTINT("accountid") : $salary->accountid, "accountid", 0, '', 1); // Show opend bank account list
+	$form->select_comptes(GETPOSTISSET("accountid") ? GETPOSTINT("accountid") : $salary->accountid, "accountid", 0, '', 1); // Show opened bank account list
 	print '</td></tr>';
 
 	// Number
@@ -248,7 +246,7 @@ if ($action == 'create') {
 
 	print '<tr>';
 	print '<td class="tdtop">'.$langs->trans("Comments").'</td>';
-	print '<td class="tdtop"><textarea name="note" wrap="soft" cols="60" rows="'.ROWS_3.'">';
+	print '<td class="tdtop"><textarea name="note" wrap="soft" cols="60" rows="'.ROWS_2.'">';
 	print GETPOST('note');
 	print '</textarea></td>';
 	print '</tr>';
@@ -257,9 +255,11 @@ if ($action == 'create') {
 
 	print dol_get_fiche_end();
 
-	/*
-	 * Autres charges impayees
-	 */
+
+	print '<br>';
+
+
+	// List of salaries unpaid
 	$num = 1;
 	$i = 0;
 
@@ -273,7 +273,6 @@ if ($action == 'create') {
 	print '<td class="center">'.$langs->trans("Amount").'</td>';
 	print "</tr>\n";
 
-	$total = 0;
 	$total_ttc = 0.;
 	$totalrecu = 0;
 
@@ -312,9 +311,8 @@ if ($action == 'create') {
 		print "</td>";
 
 		print "</tr>\n";
-		$total += $objp->total;
 		$total_ttc += $objp->total_ttc;
-		$totalrecu += $objp->am;
+		$totalrecu += $objp->amount;
 		$i++;
 	}
 	if ($i > 1) {
@@ -334,8 +332,8 @@ if ($action == 'create') {
 
 	// Bouton Save payment
 	print '<div class="center">';
-	print '<div class="paddingbottom"><input type="checkbox" checked name="closepaidsalary" id="closepaidsalary"><label for="closepaidsalary">'.$langs->trans("ClosePaidSalaryAutomatically").'</label></div>';
-	print $form->buttonsSaveCancel("ToMakePayment", "Cancel", '', true);
+	print '<div class="paddingbottom"><input type="checkbox" checked name="closepaidsalary" id="closepaidsalary" class="marginrightonly"><label for="closepaidsalary" class="opacitymedium">'.$langs->trans("ClosePaidSalaryAutomatically").'</label></div>';
+	print $form->buttonsSaveCancel("ToMakePayment", "Cancel", array(), true);
 	print '</div>';
 
 
