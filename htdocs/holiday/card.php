@@ -460,7 +460,7 @@ if (empty($reshook)) {
 					$object->date_fin = $date_fin;
 					$object->fk_validator = $approverid;
 					if (getDolGlobalString('HOLIDAY_REQUIRE_DOUBLE_APPROVAL')) {
-						// EN: Keep the updated second approver / FR: Conserver le second valideur mis à jour
+						// EN: Keep the updated second approver / FR: Conserver le second valideur à jour
 						$object->fk_user_approve2 = ($approverid2 > 0 ? $approverid2 : 0);
 					} else {
 						$object->fk_user_approve2 = 0;

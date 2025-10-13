@@ -484,7 +484,7 @@ class Holiday extends CommonObject
 				$this->user_validation_id = $obj->fk_user_valid;
 				$this->date_approval = $this->db->jdate($obj->date_approval);
 				$this->fk_user_approve = $obj->fk_user_approve;
-				// EN: Store the second approval metadata / FR: Enregistrer les informations de la seconde approbation
+				// EN: Store the second approval metadata / FR: Enregistrer les détails de la seconde approbation
 				$this->date_approval2 = $this->db->jdate($obj->date_approval2);
 				$this->fk_user_approve2 = $obj->fk_user_approve2;
 				$this->date_refuse = $this->db->jdate($obj->date_refuse);
@@ -614,7 +614,7 @@ class Holiday extends CommonObject
 				$tab_result[$i]['fk_user_valid'] = $obj->fk_user_valid;
 				$tab_result[$i]['date_approval'] = $this->db->jdate($obj->date_approval);
 				$tab_result[$i]['fk_user_approve'] = $obj->fk_user_approve;
-				// EN: Keep the second approval data / FR: Conserver les informations de seconde approbation
+				// EN: Keep the second approval data / FR: Conserver les détails de seconde approbation
 				$tab_result[$i]['date_approval2'] = $this->db->jdate($obj->date_approval2);
 				$tab_result[$i]['fk_user_approve2'] = $obj->fk_user_approve2;
 				$tab_result[$i]['date_refuse'] = $this->db->jdate($obj->date_refuse);
@@ -749,7 +749,7 @@ class Holiday extends CommonObject
 				$tab_result[$i]['fk_user_valid'] = $obj->fk_user_valid;
 				$tab_result[$i]['date_approval'] = $this->db->jdate($obj->date_approval);
 				$tab_result[$i]['fk_user_approve'] = $obj->fk_user_approve;
-				// EN: Keep the second approval data / FR: Conserver les informations de seconde approbation
+				// EN: Keep the second approval data / FR: Conserver les détails de seconde approbation
 				$tab_result[$i]['date_approval2'] = $this->db->jdate($obj->date_approval2);
 				$tab_result[$i]['fk_user_approve2'] = $obj->fk_user_approve2;
 				$tab_result[$i]['date_refuse'] = $obj->date_refuse;
@@ -976,7 +976,7 @@ class Holiday extends CommonObject
 		} else {
 			$sql .= " fk_user_approve = NULL,";
 		}
-		// EN: Persist the second approval info / FR: Enregistrer les informations de seconde approbation
+		// EN: Persist the second approval info / FR: Enregistrer les détails de seconde approbation
 		if (!empty($this->date_approval2)) {
 			$sql .= " date_approval2 = '".$this->db->idate($this->date_approval2)."',";
 		} else {
@@ -1117,7 +1117,7 @@ class Holiday extends CommonObject
 		} else {
 			$sql .= " fk_user_approve = NULL,";
 		}
-		// EN: Persist the second approval info / FR: Enregistrer les informations de seconde approbation
+		// EN: Persist the second approval info / FR: Enregistrer les détails de seconde approbation
 		if (!empty($this->date_approval2)) {
 			$sql .= " date_approval2 = '".$this->db->idate($this->date_approval2)."',";
 		} else {
