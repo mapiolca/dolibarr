@@ -1,7 +1,9 @@
 <?php
 /* Copyright (C) 2017-2021 Laurent Destailleur  <eldy@users.sourceforge.net>
- * Copyright (C) 2024-2025	MDW						<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2024-2025      MDW                                             <mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024-2025  Frédéric France         <frederic.france@free.fr>
+ * Copyright (C) 2024       Pierre Ardoin           <developpeur@lesmetiersdubatiment.fr>
+ *
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -90,7 +92,13 @@ $permissiontodelete = $user->hasRight('knowledgemanagement', 'knowledgerecord', 
 $permissiontovalidate =  ((!getDolGlobalString('MAIN_USE_ADVANCED_PERMS') && $permissiontoadd) || (getDolGlobalString('MAIN_USE_ADVANCED_PERMS') && $user->hasRight('knowledgemanagement', 'knowledgerecord_advance', 'validate')));
 $permissionnote = $user->hasRight('knowledgemanagement', 'knowledgerecord', 'write'); // Used by the include of actions_setnotes.inc.php
 $permissiondellink = $user->hasRight('knowledgemanagement', 'knowledgerecord', 'write'); // Used by the include of actions_dellink.inc.php
-$upload_dir = $conf->knowledgemanagement->multidir_output[isset($object->entity) ? $object->entity : 1];
+	// Ensure upload directory is defined for current entity
+	// S'assurer que le répertoire de téléversement est défini pour l'entité courante
+	$entityForUpload = isset($object->entity) ? $object->entity : $conf->entity;
+	if (empty($conf->knowledgemanagement->multidir_output[$entityForUpload])) {
+		$entityForUpload = $conf->entity;
+	}
+	$upload_dir = !empty($conf->knowledgemanagement->multidir_output[$entityForUpload]) ? $conf->knowledgemanagement->multidir_output[$entityForUpload] : $conf->knowledgemanagement->dir_output;
 
 // Security check - Protection if external user
 //if ($user->socid > 0) accessforbidden();
