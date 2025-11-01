@@ -6,6 +6,7 @@
  * Copyright (C) 2016       Juanjo Menent           <jmenent@2byte.es>
  * Copyright (C) 2018-2025  Frédéric France         <frederic.france@free.fr>
  * Copyright (C) 2024-2025	MDW						<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2025           Pierre Ardoin <developpeur@lesmetiersdubatiment.fr>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -183,6 +184,9 @@ class Holiday extends CommonObject
 	 * @var array<int,array{id:int,rowid:int,date_action:string,fk_user_action:int,fk_user_update:int,type_action:string,prev_solde:float,new_solde:float,fk_type:int}>
 	 */
 	public $logs = array();
+	// EN: Cache marker to avoid repeated schema checks for second approval columns.
+	// FR: Indicateur de cache pour éviter de répéter les vérifications de schéma des colonnes de seconde approbation.
+	protected static $secondApprovalColumnsChecked = false;
 
 
 	/**
@@ -217,6 +221,62 @@ class Holiday extends CommonObject
 		$this->db = $db;
 
 		$this->ismultientitymanaged = 0;
+		// EN: Guarantee schema compatibility for second approval features.
+		// FR: Garantir la compatibilité du schéma pour les fonctionnalités de seconde approbation.
+		$this->ensureSecondApprovalColumns();
+	}
+	/**
+	 * EN: Ensure the second approval columns are present in the database schema.
+	 * FR: S'assurer que les colonnes de seconde approbation existent dans le schéma de base de données.
+	 */
+	protected function ensureSecondApprovalColumns()
+	{
+		if (self::$secondApprovalColumnsChecked) {
+			return;
+		}
+		$table = MAIN_DB_PREFIX.'holiday';
+		$hasDate = $this->doesColumnExist($table, 'date_approval2');
+		$hasLegacyDate = $this->doesColumnExist($table, 'date_approve2');
+		if (!$hasDate && $hasLegacyDate) {
+			// EN: Rename legacy column to the new standard name.
+			// FR: Renommer la colonne héritée pour respecter la nouvelle norme.
+			$sql = "ALTER TABLE ".$table." CHANGE COLUMN date_approve2 date_approval2 datetime DEFAULT NULL";
+			$this->db->query($sql);
+			$hasDate = $this->doesColumnExist($table, 'date_approval2');
+		}
+		if (!$hasDate) {
+			// EN: Add missing date column for second approval.
+			// FR: Ajouter la colonne manquante de date pour la seconde approbation.
+			$sql = "ALTER TABLE ".$table." ADD COLUMN date_approval2 datetime DEFAULT NULL";
+			$this->db->query($sql);
+		}
+		if (!$this->doesColumnExist($table, 'fk_user_approve2')) {
+			// EN: Add missing user column for second approval.
+			// FR: Ajouter la colonne manquante d'utilisateur pour la seconde approbation.
+			$sql = "ALTER TABLE ".$table." ADD COLUMN fk_user_approve2 integer DEFAULT NULL";
+			$this->db->query($sql);
+		}
+		self::$secondApprovalColumnsChecked = true;
+	}
+
+	/**
+	 * EN: Helper to check if a column exists in the given table.
+	 * FR: Aide pour vérifier si une colonne existe dans la table donnée.
+	 *
+	 * @param string $table  Table name with prefix.
+	 * @param string $column Column name to check.
+	 * @return bool
+	 */
+	protected function doesColumnExist($table, $column)
+	{
+		$sql = "SHOW COLUMNS FROM ".$table." LIKE '".$this->db->escape($column)."'";
+		$resql = $this->db->query($sql);
+		$exists = false;
+		if ($resql) {
+			$exists = (bool) $this->db->num_rows($resql);
+			$this->db->free($resql);
+		}
+		return $exists;
 	}
 
 
