@@ -43,6 +43,44 @@ require_once DOL_DOCUMENT_ROOT.'/core/lib/date.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/holiday.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/holiday/class/holiday.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/extrafields.class.php';
+require_once DOL_DOCUMENT_ROOT.'/user/class/user.class.php';
+
+/**
+ * Determine the default second approver based on the hierarchy of the first approver.
+ * Détermine le second valideur par défaut en fonction de la hiérarchie du premier valideur.
+ *
+ * @param DoliDB $db Database handler / Gestionnaire de base de données
+ * @param int $firstApproverId First approver identifier / Identifiant du premier valideur
+ * @param array<int,int> $allowedApprovers Optional allowed approvers / Liste optionnelle des valideurs autorisés
+ * @return int Identifier of the second approver or 0 / Identifiant du second valideur ou 0
+ */
+function holiday_get_default_second_approver(DoliDB $db, $firstApproverId, array $allowedApprovers = array())
+{
+	// Secure the incoming identifier / Sécurise l'identifiant en entrée
+	$firstApproverId = (int) $firstApproverId;
+	if ($firstApproverId <= 0) {
+		return 0;
+	}
+
+	// Load the selected first approver / Charge le premier valideur sélectionné
+	$firstApprover = new User($db);
+	if ($firstApprover->fetch($firstApproverId) <= 0) {
+		return 0;
+	}
+
+	// Extract the manager identifier from the hierarchy / Récupère l'identifiant du responsable hiérarchique
+	$managerId = (int) $firstApprover->fk_user;
+	if ($managerId <= 0) {
+		return 0;
+	}
+
+	// Check if the manager can validate if a list is provided / Vérifie que le responsable peut valider si une liste est fournie
+	if (!empty($allowedApprovers) && !in_array($managerId, $allowedApprovers, true)) {
+		return 0;
+	}
+
+	return $managerId;
+}
 
 /**
  * @var Conf $conf
@@ -280,9 +318,16 @@ if (empty($reshook)) {
 			setEventMessages($langs->transnoentitiesnoconv('InvalidValidator'), null, 'errors');
 			$error++;
 		}
-		// Allow selection of the second approver
+		// Allow selection of the second approver / Gère la sélection du second valideur
 		if (getDolGlobalString('HOLIDAY_REQUIRE_DOUBLE_APPROVAL')) {
-			// Validate the chosen second approver
+			// Auto select the hierarchical manager if missing / Sélectionne automatiquement le responsable hiérarchique si absent
+			if ($approverid2 < 1) {
+				$defaultSecondApprover = holiday_get_default_second_approver($db, $approverid, $approverslist);
+				if ($defaultSecondApprover > 0) {
+					$approverid2 = $defaultSecondApprover;
+				}
+			}
+			// Validate the chosen second approver / Valide le second valideur choisi
 			if ($approverid2 < 1) {
 				setEventMessages($langs->trans('SecondApproverRequired'), null, 'errors');
 				$error++;
@@ -305,9 +350,9 @@ if (empty($reshook)) {
 			$object->fk_user = $fuserid;
 			$object->description = $description;
 			$object->fk_validator = $approverid;
-		// Offer edition of the second approver
-		if (getDolGlobalString('HOLIDAY_REQUIRE_DOUBLE_APPROVAL')) {
-			// Keep the expected second approver
+			// Offer edition of the second approver / Permet l'édition du second valideur
+			if (getDolGlobalString('HOLIDAY_REQUIRE_DOUBLE_APPROVAL')) {
+				// Keep the expected second approver / Conserve le second valideur prévu
 				$object->fk_user_approve2 = ($approverid2 > 0 ? $approverid2 : 0);
 			} else {
 				$object->fk_user_approve2 = 0;
@@ -342,17 +387,25 @@ if (empty($reshook)) {
 
 		$object->oldcopy = dol_clone($object, 2);  // @phan-suppress-current-line PhanTypeMismatchProperty
 
-		$object->fk_validator = GETPOSTINT('valideur');
-		// Capture the second approver during quick edit
+		$approverid = GETPOSTINT('valideur');
+		$object->fk_validator = $approverid;
+		// Capture the second approver during quick edit / Récupère le second valideur lors de l'édition rapide
 		$approverid2 = GETPOSTINT('valideur2');
 		$localerror = 0;
 		if (getDolGlobalString('HOLIDAY_REQUIRE_DOUBLE_APPROVAL')) {
-			// Validate and store the second approver during quick edit
+			$approverslist = $object->fetch_users_approver_holiday();
+			// Auto select the hierarchical manager if missing / Sélectionne automatiquement le responsable hiérarchique si absent
+			if ($approverid2 < 1) {
+				$defaultSecondApprover = holiday_get_default_second_approver($db, $approverid, $approverslist);
+				if ($defaultSecondApprover > 0) {
+					$approverid2 = $defaultSecondApprover;
+				}
+			}
+			// Validate and store the second approver during quick edit / Valide et sauvegarde le second valideur lors de l'édition rapide
 			if ($approverid2 < 1) {
 				setEventMessages($langs->trans('SecondApproverRequired'), null, 'warnings');
 				$localerror++;
 			}
-			$approverslist = $object->fetch_users_approver_holiday();
 			if (!empty($approverslist) && !in_array($approverid2, $approverslist)) {
 				setEventMessages($langs->trans('InvalidSecondValidatorCP'), null, 'warnings');
 				$localerror++;
@@ -444,19 +497,28 @@ if (empty($reshook)) {
 					$action = 'edit';
 				}
 				if (getDolGlobalString('HOLIDAY_REQUIRE_DOUBLE_APPROVAL')) {
-					// Validate the second approver while editing
-					if ($approverid2 < 1) {
-						setEventMessages($langs->trans('SecondApproverRequired'), null, 'warnings');
-						$error++;
-						$action = 'edit';
-					}
-					$approverslist = $object->fetch_users_approver_holiday();
-					if (!empty($approverslist) && !in_array($approverid2, $approverslist)) {
-						setEventMessages($langs->trans('InvalidSecondValidatorCP'), null, 'warnings');
-						$error++;
-						$action = 'edit';
+				$approverslist = $object->fetch_users_approver_holiday();
+				// Auto select the hierarchical manager if missing / Sélectionne automatiquement le responsable hiérarchique si absent
+				if ($approverid2 < 1) {
+					$defaultSecondApprover = holiday_get_default_second_approver($db, $approverid, $approverslist);
+					if ($defaultSecondApprover > 0) {
+						$approverid2 = $defaultSecondApprover;
 					}
 				}
+				// Validate the second approver while editing / Valide le second valideur pendant l'édition
+				if ($approverid2 < 1) {
+					setEventMessages($langs->trans('SecondApproverRequired'), null, 'warnings');
+					$error++;
+					$action = 'edit';
+				}
+				if (!empty($approverslist) && !in_array($approverid2, $approverslist)) {
+					setEventMessages($langs->trans('InvalidSecondValidatorCP'), null, 'warnings');
+					$error++;
+					$action = 'edit';
+				}
+			}
+
+
 
 				// If there is no Business Days within request
 				$nbopenedday = num_open_day($date_debut_gmt, $date_fin_gmt, 0, 1, $halfday);
@@ -1303,7 +1365,12 @@ if ((empty($id) && empty($ref)) || $action == 'create' || $action == 'add') {
 			} else {
 				$defaultselectuser2 = GETPOSTINT('valideur2');
 				if (empty($defaultselectuser2) && !empty($defaultselectuser)) {
-					$defaultselectuser2 = $defaultselectuser;
+					$defaultFromHierarchy = holiday_get_default_second_approver($db, $defaultselectuser, $include_users);
+					if ($defaultFromHierarchy > 0) {
+						$defaultselectuser2 = $defaultFromHierarchy;
+					} else {
+						$defaultselectuser2 = $defaultselectuser;
+					}
 				}
 				$s2 = $form->select_dolusers($defaultselectuser2, "valideur2", 1, '', 0, $include_users, '', '0,'.$conf->entity, 0, 0, '', 0, '', 'minwidth200 maxwidth500');
 				print img_picto('', 'user', 'class="pictofixedwidth"').$form->textwithpicto($s2, $langs->trans("AnyOtherInThisListCanValidate"));
@@ -1617,12 +1684,18 @@ if ((empty($id) && empty($ref)) || $action == 'create' || $action == 'add') {
 						if (!in_array($object->fk_user_approve2, $include_users)) {
 							$include_users[] = $object->fk_user_approve2;
 						}
-						// Fetch the proposed second approver
+						// Fetch the proposed second approver / Récupère le second valideur proposé
 						$defaultselectuser2 = $object->fk_user_approve2;
-						// Preserve the posted value for the second approver
+						if (empty($defaultselectuser2) && !empty($object->fk_validator)) {
+							$defaultFromHierarchy = holiday_get_default_second_approver($db, $object->fk_validator, $include_users);
+							if ($defaultFromHierarchy > 0) {
+								$defaultselectuser2 = $defaultFromHierarchy;
+							}
+						}
+						// Preserve the posted value for the second approver / Préserve la valeur postée pour le second valideur
 						if ($action == 'editvalidator' && GETPOSTINT('valideur2') > 0) {
-							// Refresh the second approver with the posted value
-						$defaultselectuser2 = GETPOSTINT('valideur2');
+							// Refresh the second approver with the posted value / Rafraîchit le second valideur avec la valeur postée
+							$defaultselectuser2 = GETPOSTINT('valideur2');
 						}
 						$s2 = $form->select_dolusers($defaultselectuser2, "valideur2", (($action == 'editvalidator') ? 0 : 1), $arrayofvalidatorstoexclude, 0, $include_users);
 						print '<div class="paddingleft">'.$form->textwithpicto($s2, $langs->trans("AnyOtherInThisListCanValidate")).'</div>';
