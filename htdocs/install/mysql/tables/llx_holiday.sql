@@ -38,8 +38,6 @@ CREATE TABLE llx_holiday
 	fk_user_valid	integer DEFAULT NULL,	-- EN: user validation / FR: utilisateur de validation
 	date_approval	DATETIME DEFAULT NULL,	-- EN: date approval / FR: date d'approbation
 	fk_user_approve	integer DEFAULT NULL,	-- EN: user approval / FR: utilisateur approbateur
-	date_approval2	DATETIME DEFAULT NULL,	-- EN: date of second approval / FR: date de la seconde approbation
-	fk_user_approve2	integer DEFAULT NULL,	-- EN: user for second approval / FR: utilisateur pour la seconde approbation
 	date_refuse	DATETIME DEFAULT NULL,
 	fk_user_refuse	integer DEFAULT NULL,
 	date_cancel	DATETIME DEFAULT NULL,
@@ -52,3 +50,8 @@ CREATE TABLE llx_holiday
 	extraparams	varchar(255)	-- EN: for other parameters with json format / FR: pour d'autres paramètres au format JSON
 )
 ENGINE=innodb;
+
+-- EN: Add double approval columns if missing / FR: Ajoute les colonnes de double approbation si elles sont absentes
+ALTER TABLE llx_holiday
+ADD COLUMN date_approval2 DATETIME DEFAULT NULL AFTER fk_user_approve,
+ADD COLUMN fk_user_approve2 integer DEFAULT NULL AFTER date_approval2;
