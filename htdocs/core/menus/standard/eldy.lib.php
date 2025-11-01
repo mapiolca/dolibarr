@@ -10,6 +10,7 @@
  * Copyright (C) 2022-2023	Solution Libre SAS			<contact@solution-libre.fr>
  * Copyright (C) 2024-2025	MDW							<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024-2025	Alexandre Spangaro			<alexandre@inovea-conseil.com>
+ * Copyright (C) 2025       Josep Lluís Amador          <joseplluis@lliuretic.cat>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,15 +74,15 @@ function print_eldy_menu($db, $atarget, $type_user, &$tabMenu, &$menu, $noout = 
 	$menu_arr = array();
 
 	// Home
-	$landingpage = getDolUserString('MAIN_LANDING_PAGE', getDolGlobalString('MAIN_LANDING_PAGE'));
-	if (!empty($landingpage)) {
-		$landingpage = dol_buildpath($landingpage, 1);
+	$homepage = getDolUserString('MAIN_HOME_PAGE', getDolGlobalString('MAIN_HOME_PAGE'));
+	if (!empty($homepage) && !$user->admin) {
+		$homepage = dol_buildpath($homepage, 1);
 	} else {
-		$landingpage = dolBuildUrl('/index.php', ['mainmenu'=>'home', 'leftmenu'=>'home']);
+		$homepage = dolBuildUrl('/index.php', ['mainmenu'=>'home', 'leftmenu'=>'home']);
 	}
 	$menu_arr[] = array(
 		'name' => 'Home',
-		'link' => $landingpage,
+		'link' => $homepage,
 		'title' => "Home",
 		'level' => 0,
 		'enabled' => $showmode = 1,
@@ -1309,9 +1310,9 @@ function get_left_menu_thridparties($mainmenu, &$newmenu, $usemenuhider = 1, $le
 		// Prospects
 		if (isModEnabled('societe') && !getDolGlobalString('SOCIETE_DISABLE_PROSPECTS')) {
 			$langs->load("commercial");
-			$newmenu->add("/societe/list.php?type=p&amp;leftmenu=prospects", $langs->trans("Prospects"), 2, $user->hasRight('societe', 'lire'), '', $mainmenu, 'prospects', 5);
+			$newmenu->add(dolBuildUrl('/societe/list.php', ['type' => 'p', 'leftmenu' => 'prospects']), $langs->trans("Prospects"), 2, $user->hasRight('societe', 'lire'), '', $mainmenu, 'prospects', 5);
 
-			$newmenu->add("/societe/card.php?leftmenu=prospects&action=create&type=p", $langs->trans("MenuNewProspect"), 3, $user->hasRight('societe', 'creer'));
+			$newmenu->add(dolBuildUrl('/societe/card.php', ['leftmenu' => 'prospects', 'action' => 'create', 'type' => 'p']), $langs->trans("MenuNewProspect"), 3, $user->hasRight('societe', 'creer'));
 		}
 
 		// Customers/Prospects
@@ -1840,8 +1841,8 @@ function get_left_menu_accountancy($mainmenu, &$newmenu, $usemenuhider = 1, $lef
 							if ($objp->nature == 5 && isModEnabled('expensereport') && !getDolGlobalString('ACCOUNTING_DISABLE_BINDING_ON_EXPENSEREPORTS')) {
 								$nature = "expensereports";
 							}
-							if ($objp->nature == 1 && isModEnabled('asset')) {
-								$nature = "various";	// Warning: The page /accountancy/journal/variousjournal.php is bugged. It read tables that does not exists.
+							if ($objp->nature == 1 && (isModEnabled('asset') || isModEnabled('invoice') || isModEnabled('supplier_invoice'))) {
+								$nature = "various";
 							}
 							if ($objp->nature == 8) {
 								$nature = "inventory";
@@ -2419,7 +2420,8 @@ function get_left_menu_projects($mainmenu, &$newmenu, $usemenuhider = 1, $leftme
 				$newmenu->add("/projet/tasks/list.php?leftmenu=tasks".($search_project_user ? '&search_project_user='.$search_project_user : ''), $langs->trans("List"), 1, $user->hasRight('projet', 'lire'));
 				$newmenu->add("/projet/tasks/stats/index.php?leftmenu=projects", $langs->trans("Statistics"), 1, $user->hasRight('projet', 'lire'));
 
-				$newmenu->add("/projet/activity/perweek.php?leftmenu=tasks".($search_project_user ? '&search_project_user='.$search_project_user : ''), $langs->trans("TimeEntry"), 0, $user->hasRight('projet', 'lire'), '', 'project', 'timespent', 0, '', '', '', img_picto('', 'timespent', 'class="paddingright pictofixedwidth"'));
+				$optionTimesheet = getDolGlobalString('PROJECT_OPEN_ALWAYS_ON_TIMESHEET', "perweek");
+				$newmenu->add("/projet/activity/".$optionTimesheet.".php?leftmenu=tasks".($search_project_user ? '&search_project_user='.$search_project_user : ''), $langs->trans("TimeEntry"), 0, $user->hasRight('projet', 'lire'), '', 'project', 'timespent', 0, '', '', '', img_picto('', 'timespent', 'class="paddingright pictofixedwidth"'));
 				$newmenu->add("/projet/tasks/time.php?leftmenu=tasks".($search_project_user ? '&search_project_user='.$search_project_user : ''), $langs->trans("List"), 1, $user->hasRight('projet', 'lire'));
 			}
 		}
@@ -2527,7 +2529,8 @@ function get_left_menu_hrm($mainmenu, &$newmenu, $usemenuhider = 1, $leftmenu = 
 
 				$search_project_user = GETPOSTINT('search_project_user');
 
-				$newmenu->add(dolBuildUrl('/projet/activity/perweek.php', ['leftmenu' => 'tasks', 'search_project_user' => ($search_project_user ? $search_project_user : '')]), $langs->trans("TimeEntry"), 0, $user->hasRight('projet', 'lire'), '', $mainmenu, 'timespent', 0, '', '', '', img_picto('', 'timespent', 'class="paddingright pictofixedwidth"'));
+				$optionTimesheet = getDolGlobalString('PROJECT_OPEN_ALWAYS_ON_TIMESHEET', "perweek");
+				$newmenu->add(dolBuildUrl('/projet/activity/'.$optionTimesheet.'.php', ['leftmenu' => 'tasks', 'search_project_user' => ($search_project_user ? $search_project_user : '')]), $langs->trans("TimeEntry"), 0, $user->hasRight('projet', 'lire'), '', $mainmenu, 'timespent', 0, '', '', '', img_picto('', 'timespent', 'class="paddingright pictofixedwidth"'));
 			}
 		}
 	}
@@ -2554,7 +2557,7 @@ function get_left_menu_tools($mainmenu, &$newmenu, $usemenuhider = 1, $leftmenu 
 			$newmenu->add(dolBuildUrl('/categories/index.php', ['leftmenu' => 'category']), $titleindex, 0, $user->hasRight('category', 'read'), '', $mainmenu, 'category', 5, '', '', '', img_picto('', 'category', 'class="paddingright pictofixedwidth"'));
 		}
 
-		if (empty($user->socid)) { // limit to internal users
+		if (!getDolGlobalInt('MENU_HIDE_EMAIL_TEMPLATES') && empty($user->socid)) { // limit to internal users
 			$langs->load("mails");
 			$newmenu->add(dolBuildUrl('/admin/mails_templates.php', ['leftmenu' => 'email_templates']), $langs->trans("EMailTemplates"), 0, 1, '', $mainmenu, 'email_templates', 10, '', '', '', img_picto('', 'email', 'class="paddingright pictofixedwidth"'));
 		}
