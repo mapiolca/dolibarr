@@ -310,6 +310,13 @@ class modHoliday extends DolibarrModules
 	 */
 	public function init($options = '')
 	{
+		// EN: Ensure holiday tables are created or updated during module activation.
+		// FR: Garantir la création ou la mise à jour des tables des congés lors de l'activation du module.
+		$result = $this->_load_tables('/install/mysql/', 'holiday');
+		if ($result < 0) {
+			return -1;
+		}
+
 		// Permissions
 		$this->remove($options);
 
