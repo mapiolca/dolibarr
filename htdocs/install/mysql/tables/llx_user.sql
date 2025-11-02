@@ -74,6 +74,7 @@ create table llx_user
   fk_user                      integer NULL,                  -- Supervisor, hierarchic parent
   fk_user_expense_validator    integer NULL,
   fk_user_holiday_validator    integer NULL,
+  fk_user_holiday_validator2   integer NULL,                   -- EN: forced second holiday approver / FR: second valideur des congés forcé
 
   national_registration_number  varchar(50),
   idpers1			   varchar(128),

@@ -11,6 +11,7 @@
  * Copyright (C) 2024		Charlene Benke				<charlene@patas-monkey.com>
  * Copyright (C) 2025		MDW							<mdeweerd@users.noreply.github.com>
  *
+ * Copyright (C) 2025           Pierre Ardoin                   <developpeur@lesmetiersdubatiment.fr>
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3 of the License, orwrite
@@ -66,6 +67,14 @@ function holiday_get_default_second_approver(DoliDB $db, $firstApproverId, array
 	$firstApprover = new User($db);
 	if ($firstApprover->fetch($firstApproverId) <= 0) {
 		return 0;
+	}
+
+	// Prefer forced second approver if defined / Privilégie le second valideur forcé s'il est défini
+	$forcedSecondApproverId = (int) $firstApprover->fk_user_holiday_validator2;
+	if ($forcedSecondApproverId > 0) {
+		if (empty($allowedApprovers) || in_array($forcedSecondApproverId, $allowedApprovers, true)) {
+			return $forcedSecondApproverId;
+		}
 	}
 
 	// Extract the manager identifier from the hierarchy / Récupère l'identifiant du responsable hiérarchique

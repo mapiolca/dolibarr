@@ -13,6 +13,7 @@
  * Copyright (C) 2018		charlene Benke			<charlie@patas-monkey.com>
  * Copyright (C) 2018-2021	Nicolas ZABOURI			<info@inovea-conseil.com>
  * Copyright (C) 2019-2025  Frédéric France			<frederic.france@free.fr>
+ * Copyright (C) 2025           Pierre Ardoin			<developpeur@lesmetiersdubatiment.fr>
  * Copyright (C) 2019		Abbes Bahfir			<dolipar@dolipar.org>
  * Copyright (C) 2024-2025	MDW						<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024		Lenin Rivas				<lenin.rivas777@gmail.com>
@@ -253,10 +254,17 @@ class User extends CommonObject
 	 */
 	public $fk_user_expense_validator;
 
-	/**
-	 * @var int User ID of holidays validator
-	 */
-	public $fk_user_holiday_validator;
+       /**
+        * @var int User ID of holidays validator
+        */
+       public $fk_user_holiday_validator;
+
+       /**
+        * User ID of second holidays validator / Identifiant utilisateur du second valideur de congés
+        *
+        * @var int
+        */
+       public $fk_user_holiday_validator2;
 
 	/**
 	 * @var string clicktodial url
@@ -544,7 +552,8 @@ class User extends CommonObject
 		$sql .= " u.address, u.zip, u.town, u.fk_state as state_id, u.fk_country as country_id,";
 		$sql .= " u.admin, u.login, u.note_private, u.note_public,";
 		$sql .= " u.pass, u.pass_crypted, u.pass_temp, u.api_key,";
-		$sql .= " u.fk_soc, u.fk_socpeople, u.fk_member, u.fk_user, u.ldap_sid, u.fk_user_expense_validator, u.fk_user_holiday_validator,";
+		// Load forced second approver metadata / Charge les métadonnées du second valideur forcé
+		$sql .= " u.fk_soc, u.fk_socpeople, u.fk_member, u.fk_user, u.ldap_sid, u.fk_user_expense_validator, u.fk_user_holiday_validator, u.fk_user_holiday_validator2,";
 		$sql .= " fk_user_creat as user_creation_id, fk_user_modif as user_modification_id,";
 		$sql .= " u.statut as status, u.lang, u.entity,";
 		$sql .= " u.datec as datec,";
@@ -729,6 +738,8 @@ class User extends CommonObject
 				$this->fk_user = $obj->fk_user;
 				$this->fk_user_expense_validator = $obj->fk_user_expense_validator;
 				$this->fk_user_holiday_validator = $obj->fk_user_holiday_validator;
+				// Store forced second approver choice / Enregistre le second valideur forcé
+				$this->fk_user_holiday_validator2 = $obj->fk_user_holiday_validator2;
 
 				$this->default_range = $obj->default_range;
 				$this->default_c_exp_tax_cat = $obj->default_c_exp_tax_cat;
@@ -2263,6 +2274,8 @@ class User extends CommonObject
 		$sql .= ", fk_user_modif = ".($this->user_modification_id > 0 ? "'".((int) $this->user_modification_id)."'" : "null");
 		$sql .= ", fk_user_expense_validator = ".($this->fk_user_expense_validator > 0 ? "'".((int) $this->fk_user_expense_validator)."'" : "null");
 		$sql .= ", fk_user_holiday_validator = ".($this->fk_user_holiday_validator > 0 ? "'".((int) $this->fk_user_holiday_validator)."'" : "null");
+		// Persist forced second approver linkage / Sauvegarde le lien vers le second valideur forcé
+		$sql .= ", fk_user_holiday_validator2 = ".($this->fk_user_holiday_validator2 > 0 ? "'".((int) $this->fk_user_holiday_validator2)."'" : "null");
 		if (isset($this->thm) || $this->thm != '') {
 			$sql .= ", thm= ".($this->thm != '' ? "'".$this->db->escape($this->thm)."'" : "null");
 		}

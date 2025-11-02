@@ -17,6 +17,8 @@
  * Copyright (C) 2018		David Beniamine				<David.Beniamine@Tetras-Libre.fr>
  * Copyright (C) 2024-2025	MDW							<mdeweerd@users.noreply.github.com>
  *
+ * Copyright (C) 2025	Pierre Ardoin			<developpeur@lesmetiersdubatiment.fr>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3 of the License, or
@@ -324,6 +326,8 @@ if (empty($reshook)) {
 			$object->fk_user = GETPOSTINT("fk_user") > 0 ? GETPOSTINT("fk_user") : 0;
 			$object->fk_user_expense_validator = GETPOSTINT("fk_user_expense_validator") > 0 ? GETPOSTINT("fk_user_expense_validator") : 0;
 			$object->fk_user_holiday_validator = GETPOSTINT("fk_user_holiday_validator") > 0 ? GETPOSTINT("fk_user_holiday_validator") : 0;
+			// Capture forced second approver selection / Récupère le second valideur forcé saisi
+			$object->fk_user_holiday_validator2 = GETPOSTINT("fk_user_holiday_validator2") > 0 ? GETPOSTINT("fk_user_holiday_validator2") : 0;
 			$object->employee = GETPOSTINT('employee');
 
 			$object->thm = GETPOST("thm", 'alphanohtml') != '' ? GETPOST("thm", 'alphanohtml') : '';
@@ -1177,6 +1181,17 @@ if ($action == 'create' || $action == 'adduserldap') {
 		print img_picto('', 'user', 'class="pictofixedwidth"').$form->select_dolusers($object->fk_user_holiday_validator, 'fk_user_holiday_validator', 1, array($object->id), 0, '', '', (string) $conf->entity, 0, 0, '', 0, '', 'maxwidth300 widthcentpercentminusx');
 		print '</td>';
 		print "</tr>\n";
+		if (getDolGlobalString('HOLIDAY_REQUIRE_DOUBLE_APPROVAL')) {
+			print '<tr><td class="titlefieldcreate">';
+			$secondText = $langs->trans("ForceUserHolidaySecondValidator");
+			print $form->textwithpicto($secondText, $langs->trans("SecondValidatorIsSupervisorByDefault"), 1, 'help');
+			print '</td>';
+			print '<td>';
+			// Display selector for forced second approver / Affiche le sélecteur du second valideur forcé
+			print img_picto('', 'user', 'class="pictofixedwidth"').$form->select_dolusers($object->fk_user_holiday_validator2, 'fk_user_holiday_validator2', 1, array($object->id), 0, '', '', (string) $conf->entity, 0, 0, '', 0, '', 'maxwidth300 widthcentpercentminusx');
+			print '</td>';
+			print "</tr>\n";
+		}
 	}
 
 	// External user
@@ -1756,6 +1771,21 @@ if ($action == 'create' || $action == 'adduserldap') {
 					}
 					print '</td>';
 					print "</tr>\n";
+					if (getDolGlobalString('HOLIDAY_REQUIRE_DOUBLE_APPROVAL')) {
+						print '<tr><td>';
+						$secondText = $langs->trans("ForceUserHolidaySecondValidator");
+						print $form->textwithpicto($secondText, $langs->trans("SecondValidatorIsSupervisorByDefault"), 1, 'help');
+						print '</td>';
+						print '<td>';
+						// Display forced second approver summary / Affiche le résumé du second valideur forcé
+						if (!empty($object->fk_user_holiday_validator2)) {
+							$hvuser2 = new User($db);
+							$hvuser2->fetch($object->fk_user_holiday_validator2);
+							print $hvuser2->getNomUrl(-1);
+						}
+						print '</td>';
+						print "</tr>\n";
+					}
 				}
 			}
 
@@ -2608,6 +2638,24 @@ if ($action == 'create' || $action == 'adduserldap') {
 					}
 					print '</td>';
 					print "</tr>\n";
+					if (getDolGlobalString('HOLIDAY_REQUIRE_DOUBLE_APPROVAL')) {
+						print '<tr><td class="titlefieldcreate">';
+						$secondText = $langs->trans("ForceUserHolidaySecondValidator");
+						print $form->textwithpicto($secondText, $langs->trans("SecondValidatorIsSupervisorByDefault"), 1, 'help');
+						print '</td>';
+						print '<td>';
+						// Display quick edit selector for forced second approver / Affiche le sélecteur rapide du second valideur forcé
+						if ($permissiontoedit) {
+							print img_picto('', 'user', 'class="pictofixedwidth"').$form->select_dolusers($object->fk_user_holiday_validator2, 'fk_user_holiday_validator2', 1, array($object->id), 0, '', '', (string) $object->entity, 0, 0, '', 0, '', 'widthcentpercentminusx maxwidth300');
+						} else {
+							print '<input type="hidden" name="fk_user_holiday_validator2" value="'.$object->fk_user_holiday_validator2.'">';
+							$hvuser2 = new User($db);
+							$hvuser2->fetch($object->fk_user_holiday_validator2);
+							print $hvuser2->getNomUrl(-1);
+						}
+						print '</td>';
+						print "</tr>\n";
+					}
 				}
 			}
 
