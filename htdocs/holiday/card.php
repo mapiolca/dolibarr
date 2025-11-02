@@ -1363,9 +1363,18 @@ if ((empty($id) && empty($ref)) || $action == 'create' || $action == 'add') {
 			if (empty($include_users)) {
 				print img_warning().' '.$langs->trans("NobodyHasPermissionToValidateHolidays");
 			} else {
+				// Build a reusable mapping of first approvers to their manager / Construit un mapping réutilisable entre le premier valideur et son responsable
+				$defaultSecondApproversMap = array();
+				foreach ($include_users as $potentialFirstApproverId) {
+					$possibleSecondApproverId = holiday_get_default_second_approver($db, $potentialFirstApproverId, $include_users);
+					if ($possibleSecondApproverId > 0) {
+						$defaultSecondApproversMap[$potentialFirstApproverId] = $possibleSecondApproverId;
+					}
+				}
+
 				$defaultselectuser2 = GETPOSTINT('valideur2');
 				if (empty($defaultselectuser2) && !empty($defaultselectuser)) {
-					$defaultFromHierarchy = holiday_get_default_second_approver($db, $defaultselectuser, $include_users);
+					$defaultFromHierarchy = (isset($defaultSecondApproversMap[$defaultselectuser]) ? $defaultSecondApproversMap[$defaultselectuser] : holiday_get_default_second_approver($db, $defaultselectuser, $include_users));
 					if ($defaultFromHierarchy > 0) {
 						$defaultselectuser2 = $defaultFromHierarchy;
 					} else {
@@ -1374,6 +1383,40 @@ if ((empty($id) && empty($ref)) || $action == 'create' || $action == 'add') {
 				}
 				$s2 = $form->select_dolusers($defaultselectuser2, "valideur2", 1, '', 0, $include_users, '', '0,'.$conf->entity, 0, 0, '', 0, '', 'minwidth200 maxwidth500');
 				print img_picto('', 'user', 'class="pictofixedwidth"').$form->textwithpicto($s2, $langs->trans("AnyOtherInThisListCanValidate"));
+				if ($action == 'create' && !empty($defaultSecondApproversMap)) {
+					$defaultSecondApproversJson = json_encode($defaultSecondApproversMap);
+					print '<script>';
+					print 'jQuery(function($){';
+					print '\\t// Auto fill second approver from hierarchy / Préremplit le second valideur via la hiérarchie';
+					print '\\tvar defaults = '.(!empty($defaultSecondApproversJson) ? $defaultSecondApproversJson : '{}').';';
+					print '\\tvar allowAutoUpdate = '.(GETPOSTINT('valideur2') > 0 ? 'false' : 'true').';';
+					print '\tvar $first = $("#valideur");';
+					print '\tvar $second = $("#valideur2");';
+					print '\tfunction applyDefaultSecond(){';
+					print '\t\tif (!allowAutoUpdate) { return; }';
+					print '\t\tvar selected = $first.val();';
+					print '\t\tif (defaults[selected]) {';
+					print '\t\t\t$second.val(defaults[selected]);';
+					print '\t\t\t$second.data("autofill", 1);';
+					print '\t\t}';
+					print '\t}';
+					print '\tif (allowAutoUpdate) {';
+					print '\t\tapplyDefaultSecond();';
+					print '\t}';
+					print '\t$first.on("change", function(){';
+					print '\t\t// Refresh default second approver when first approver changes / Rafraîchit le second valideur par défaut lorsque le premier change';
+					print '\t\tapplyDefaultSecond();';
+					print '\t});';
+					print '\t$second.on("change", function(){';
+					print '\t\t// Stop auto update after manual choice / Arrête l\'auto mise à jour après un choix manuel';
+					print '\t\tif ($second.data("autofill") !== 1) {';
+					print '\t\t\tallowAutoUpdate = false;';
+					print '\t\t}';
+					print '\t\t$second.data("autofill", 0);';
+					print '\t});';
+					print '});';
+					print '</script>';
+				}
 			}
 			print '</td>';
 			print '</tr>';
