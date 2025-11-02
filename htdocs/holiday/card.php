@@ -69,8 +69,21 @@ function holiday_get_default_second_approver(DoliDB $db, $firstApproverId, array
 		return 0;
 	}
 
-	// Prefer forced second approver if defined / Privilégie le second valideur forcé s'il est défini
-	$forcedSecondApproverId = (int) $firstApprover->fk_user_holiday_validator2;
+	// Try the forced approver stored in llx_user.fk_user_approve2 / Tente le valideur forcé stocké dans llx_user.fk_user_approve2
+	$forcedSecondApproverId = 0;
+	$sql = 'SELECT fk_user_approve2 FROM '.MAIN_DB_PREFIX."user WHERE rowid = ".$firstApproverId;
+	$resql = $db->query($sql);
+	if ($resql) {
+		$obj = $db->fetch_object($resql);
+		if ($obj) {
+			$forcedSecondApproverId = (int) $obj->fk_user_approve2;
+		}
+		$db->free($resql);
+	}
+	// Fallback on dedicated holiday value / Replie sur la valeur dédiée aux congés
+	if ($forcedSecondApproverId <= 0) {
+		$forcedSecondApproverId = (int) $firstApprover->fk_user_holiday_validator2;
+	}
 	if ($forcedSecondApproverId > 0) {
 		if (empty($allowedApprovers) || in_array($forcedSecondApproverId, $allowedApprovers, true)) {
 			return $forcedSecondApproverId;
