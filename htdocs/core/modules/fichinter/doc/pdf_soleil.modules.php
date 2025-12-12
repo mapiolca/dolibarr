@@ -506,17 +506,30 @@ class pdf_soleil extends ModelePDFFicheinter
 				}
 			}
 
-			$pdf->SetXY(20, 230);
+			// EN: Keep the signature box and related labels on the same page by positioning them dynamically.
+			$signature_block_height = 30;
+			$page_break_trigger = $pdf->getPageHeight() - $pdf->getBreakMargin();
+			$signature_top = $tab_top + $tab_height - $signature_block_height - 5;
+			$signature_top = min($signature_top, $page_break_trigger - $signature_block_height);
+			$signature_top = max($signature_top, $tab_top + 5);
+
+			$previous_autopagebreak = $pdf->getAutoPageBreak();
+			$previous_breakmargin = $pdf->getBreakMargin();
+			$pdf->SetAutoPageBreak(false, 0);
+
+			$pdf->SetXY(20, $signature_top);
 			$pdf->MultiCell(80, 5, $outputlangs->transnoentities("NameAndSignatureOfInternalContact"), 0, 'L', 0);
 
-			$pdf->SetXY(20, 235);
+			$pdf->SetXY(20, $signature_top + 5);
 			$pdf->MultiCell(80, 25, $employee_name, 1, 'L');
 
-			$pdf->SetXY(110, 230);
+			$pdf->SetXY(110, $signature_top);
 			$pdf->MultiCell(80, 5, $outputlangs->transnoentities("NameAndSignatureOfExternalContact"), 0, 'L', 0);
 
-			$pdf->SetXY(110, 235);
+			$pdf->SetXY(110, $signature_top + 5);
 			$pdf->MultiCell(80, 25, '', 1);
+
+			$pdf->SetAutoPageBreak($previous_autopagebreak, $previous_breakmargin);
 		}
 	}
 
