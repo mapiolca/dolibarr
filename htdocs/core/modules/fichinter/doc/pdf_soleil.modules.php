@@ -508,16 +508,19 @@ class pdf_soleil extends ModelePDFFicheinter
 				}
 			}
 
-			// EN: Keep the signature box and related labels on the same page by positioning them dynamically.
-			$signature_block_height = 30;
-			$page_break_trigger = $pdf->getPageHeight() - $pdf->getBreakMargin();
-			$signature_top = $tab_top + $tab_height - $signature_block_height - 5;
-			$signature_top = min($signature_top, $page_break_trigger - $signature_block_height);
-			$signature_top = max($signature_top, $tab_top + 5);
+					// EN: Keep the signature boxes aligned inside the rectangle while preventing page overflow.
+					$signature_block_height = 30;
+					$page_break_trigger = $pdf->getPageHeight() - $pdf->getBreakMargin();
+					$content_bottom = max($nexY, $tab_top + 5);
+					$signature_top = $tab_top + $tab_height - $signature_block_height - 6;
+					$signature_top = max($signature_top, $content_bottom + 4);
+					$signature_top = min($signature_top, $page_break_trigger - $signature_block_height);
 
-			$signature_box_width = (($this->page_largeur - $this->marge_gauche - $this->marge_droite) - 15) / 2;
-			$signature_left_x = $this->marge_gauche + 5;
-			$signature_right_x = $signature_left_x + $signature_box_width + 5;
+					$available_signature_width = $this->page_largeur - $this->marge_gauche - $this->marge_droite;
+					$signature_spacing = 5;
+					$signature_box_width = ($available_signature_width - $signature_spacing) / 2;
+					$signature_left_x = $this->marge_gauche;
+					$signature_right_x = $signature_left_x + $signature_box_width + $signature_spacing;
 
 			$previous_autopagebreak = $pdf->getAutoPageBreak();
 			$previous_breakmargin = $pdf->getBreakMargin();
