@@ -538,6 +538,8 @@ class pdf_soleil extends ModelePDFFicheinter
 			$pdf->SetAutoPageBreak($previous_autopagebreak, $previous_breakmargin);
 		}
 
+	}
+
 	// phpcs:disable PEAR.NamingConventions.ValidFunctionName.PublicUnderscore
 	/**
 	 *  Show top header of page.
