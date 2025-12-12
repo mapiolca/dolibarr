@@ -508,12 +508,14 @@ class pdf_soleil extends ModelePDFFicheinter
 				}
 			}
 
-					// EN: Keep the signature boxes aligned inside the rectangle while preventing page overflow.
+					// EN: Keep the signature boxes aligned inside the rectangle while preventing overflow.
 					$signature_block_height = 30;
+					$tab_bottom = $tab_top + $tab_height;
 					$page_break_trigger = $pdf->getPageHeight() - $pdf->getBreakMargin();
-					$content_bottom = max($nexY, $tab_top + 5);
-					$signature_top = $tab_top + $tab_height - $signature_block_height - 6;
-					$signature_top = max($signature_top, $content_bottom + 4);
+					$content_bottom = max($nexY, $tab_top + 6);
+					$signature_top = $tab_bottom - $signature_block_height - 6;
+					$signature_top = max($signature_top, $content_bottom + 2);
+					$signature_top = min($signature_top, $tab_bottom - $signature_block_height - 1);
 					$signature_top = min($signature_top, $page_break_trigger - $signature_block_height);
 
 					$available_signature_width = $this->page_largeur - $this->marge_gauche - $this->marge_droite;
