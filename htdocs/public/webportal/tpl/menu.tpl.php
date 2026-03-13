@@ -65,6 +65,17 @@ if ($context->userIsLog()) {
 		);
 	}
 
+	// menu contracts
+	if (isModEnabled('contract') && getDolGlobalInt('WEBPORTAL_CONTRACT_LIST_ACCESS')) {
+		$navMenu['contract_list'] = array(
+			'id' => 'contract_list',
+			'rank' => 40,
+			'url' => $context->getControllerUrl('contractlist'),
+			'name' => $langs->trans('WebPortalContractListMenu'),
+			'group' => 'administrative' // group identifier for the group if necessary
+		);
+	}
+
 	// menu member
 	$cardAccess = getDolGlobalString('WEBPORTAL_MEMBER_CARD_ACCESS');
 	if (isModEnabled('member')
