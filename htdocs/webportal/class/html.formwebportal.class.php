@@ -258,8 +258,6 @@ class FormWebPortal extends Form
 	 */
 	public function getDocumentsLink($modulepart, $modulesubdir, $filedir, $filter = '', $morecss = '', $allfiles = 0)
 	{
-		global $conf;
-
 		include_once DOL_DOCUMENT_ROOT . '/core/lib/files.lib.php';
 
 		$out = '';
@@ -271,26 +269,13 @@ class FormWebPortal extends Form
 
 		$this->infofiles = array('nboffiles' => 0, 'extensions' => array(), 'files' => array());
 
-		$entity = (int) getDolGlobalInt('ENTITY');
-		if ($entity <= 0) {
-			$entity = 1;
-		}
+		$entity = 1; // Without multicompany
 
-		// Get object entity from module output directories
-		if (isModEnabled('multicompany') && !empty($conf->{$modulepart}->multidir_output)) {
-			foreach ($conf->{$modulepart}->multidir_output as $entityKey => $outputDir) {
-				if (empty($outputDir)) {
-					continue;
-				}
-
-				$normalizedOutputDir = rtrim(str_replace('\\', '/', $outputDir), '/');
-				$normalizedFileDir = rtrim(str_replace('\\', '/', $filedir), '/');
-
-				if ($normalizedFileDir === $normalizedOutputDir || preg_match('/^' . preg_quote($normalizedOutputDir, '/') . '\//', $normalizedFileDir)) {
-					$entity = (int) $entityKey;
-					break;
-				}
-			}
+		// Get object entity
+		if (isModEnabled('multicompany')) {
+			$regs = array();
+			preg_match('/\/([0-9]+)\/[^\/]+\/' . preg_quote($modulesubdir, '/') . '$/', $filedir, $regs);
+			$entity = ((!empty($regs[1]) && $regs[1] > 1) ? $regs[1] : 1); // If entity id not found in $filedir this is entity 1 by default
 		}
 
 		// Get list of files starting with name of ref (Note: files with '^ref\.extension' are generated files, files with '^ref-...' are uploaded files)

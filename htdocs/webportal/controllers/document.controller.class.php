@@ -166,29 +166,17 @@ class DocumentController extends Controller
 			$moduleNameEn = 'invoice';
 		}
 		$moduleNameUpperEn = strtoupper($moduleNameEn);
-		// Check config access and login access
+		// check config access
+		// and file mime type (only PDF)
+		// and check login access
 		if (getDolGlobalInt('WEBPORTAL_' . $moduleNameUpperEn . '_LIST_ACCESS')
+			&& in_array($type, array('application/pdf'))
 			&& ($context->logged_thirdparty && $context->logged_thirdparty->id > 0)
 			&& $context->logged_thirdparty->id == $socId
-			&& isModEnabled($moduleName)
 		) {
-			if (!empty($conf->{$moduleName}->multidir_output[$entity])) {
+			if (isModEnabled($moduleName) && isset($conf->{$moduleName}->multidir_output[$entity])) {
 				$original_file = $conf->{$moduleName}->multidir_output[$entity] . '/' . $original_file;
 				$accessallowed = 1;
-			} elseif (!empty($conf->{$moduleName}->multidir_output) && is_array($conf->{$moduleName}->multidir_output)) {
-				foreach ($conf->{$moduleName}->multidir_output as $entityKey => $outputDir) {
-					if (empty($outputDir)) {
-						continue;
-					}
-
-					$fullPathCandidate = rtrim($outputDir, '/') . '/' . $original_file;
-					if (dol_is_file($fullPathCandidate)) {
-						$entity = (int) $entityKey;
-						$original_file = $fullPathCandidate;
-						$accessallowed = 1;
-						break;
-					}
-				}
 			}
 		}
 		$fullpath_original_file = $original_file; // $fullpath_original_file is now a full path name
