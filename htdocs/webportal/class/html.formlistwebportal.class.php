@@ -277,8 +277,8 @@ class FormListWebPortal
 			}
 		}
 		$this->arrayfields['remain_to_pay'] = array('type' => 'price', 'label' => 'RemainderToPay', 'checked' => 1, 'enabled' => $this->element == 'invoice' && isModEnabled('invoice'), 'visible' => 1, 'position' => 10000, 'help' => '',);
-		$this->arrayfields['download_link'] = array('type' => '', 'label' => 'File', 'checked' => 1, 'enabled' => ($this->element == 'propal' && isModEnabled('propal')) || ($this->element == 'order' && isModEnabled('order')) || ($this->element == 'invoice' && isModEnabled('invoice')), 'visible' => 1, 'position' => 10001, 'help' => '',);
-		$this->arrayfields['signature_link'] = array('type' => '', 'label' => 'Signature', 'checked' => 1, 'enabled' => $this->element == 'propal' && isModEnabled('propal') && getDolGlobalString("PROPOSAL_ALLOW_ONLINESIGN") != 0, 'visible' => 1, 'position' => 10002, 'help' => '',);
+		$this->arrayfields['download_link'] = array('type' => '', 'label' => 'File', 'checked' => 1, 'enabled' => ($this->element == 'propal' && isModEnabled('propal')) || ($this->element == 'order' && isModEnabled('order')) || ($this->element == 'invoice' && isModEnabled('invoice')) || ($this->element == 'ficheinter' && isModEnabled('intervention')), 'visible' => 1, 'position' => 10001, 'help' => '',);
+		$this->arrayfields['signature_link'] = array('type' => '', 'label' => 'Signature', 'checked' => 1, 'enabled' => ($this->element == 'propal' && isModEnabled('propal') && getDolGlobalString("PROPOSAL_ALLOW_ONLINESIGN") != 0) || ($this->element == 'ficheinter' && isModEnabled('intervention')), 'visible' => 1, 'position' => 10002, 'help' => '',);
 
 		$this->controller->listSetArrayFields();
 	}
@@ -654,7 +654,7 @@ class FormListWebPortal
 	 */
 	public function printValue($field_key, $field_spec, &$record, $i, &$totalarray)
 	{
-		global $conf;
+		global $conf, $langs;
 
 		$out = '';
 		if (is_object($this->object)) {
@@ -679,8 +679,15 @@ class FormListWebPortal
 					$filedir = $conf->{$element}->multidir_output[$this->object->entity] . '/' . dol_sanitizeFileName($this->object->ref);
 					$out = $this->form->getDocumentsLink($element, $filename, $filedir);
 				} elseif ($field_key == 'signature_link') {
-					if ($this->object->fk_statut == Propal::STATUS_VALIDATED) {
+					if ($this->element == 'propal' && $this->object->fk_statut == Propal::STATUS_VALIDATED) {
 						$out = $this->form->getSignatureLink('proposal', $this->object);
+					} elseif ($this->element == 'ficheinter') {
+						$signedStatus = (int) ($this->object->signed_status ?? 0);
+						if ($this->object->fk_statut == Fichinter::STATUS_CLOSED || in_array($signedStatus, array(2, 3, 9), true)) {
+							$out = $langs->trans('WebPortalInterSignedDone');
+						} else {
+							$out = $this->form->getSignatureLink('fichinter', $this->object);
+						}
 					}
 				} else {
 					$out = $this->form->showOutputFieldForObject($this->object, $field_spec, $field_key, $this->object->$field_key, '');
