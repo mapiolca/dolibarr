@@ -310,7 +310,8 @@ if (empty($reshook)) {
 			$object->status = $object::STATUS_TRANSFERED;
 			$object->date_reelle_depart = dol_now();
 			$object->update($user);
-			$result = $object->call_trigger('STOCKTRANSFER_DESTOCK', $user);
+			$object->context = array_merge($object->context, array('stocktransfer_operation' => 'destock'));
+			$result = $object->call_trigger('STOCKTRANSFER_MODIFY', $user);
 			if ($result < 0) {
 				$error++;
 				setEventMessages($object->error, $object->errors, 'errors');
@@ -342,7 +343,8 @@ if (empty($reshook)) {
 			$object->status = $object::STATUS_VALIDATED;
 			$object->date_reelle_depart = null;
 			$object->update($user);
-			$result = $object->call_trigger('STOCKTRANSFER_DESTOCK_CANCEL', $user);
+			$object->context = array_merge($object->context, array('stocktransfer_operation' => 'destock_cancel'));
+			$result = $object->call_trigger('STOCKTRANSFER_MODIFY', $user);
 			if ($result < 0) {
 				$error++;
 				setEventMessages($object->error, $object->errors, 'errors');
@@ -374,12 +376,8 @@ if (empty($reshook)) {
 			$object->status = $object::STATUS_CLOSED;
 			$object->date_reelle_arrivee = dol_now();
 			$object->update($user);
-			$result = $object->call_trigger('STOCKTRANSFER_CLOSE', $user);
-			if ($result < 0) {
-				$error++;
-				setEventMessages($object->error, $object->errors, 'errors');
-			}
-			$result = $object->call_trigger('STOCKTRANSFER_ADDSTOCK', $user);
+			$object->context = array_merge($object->context, array('stocktransfer_operation' => 'addstock'));
+			$result = $object->call_trigger('STOCKTRANSFER_MODIFY', $user);
 			if ($result < 0) {
 				$error++;
 				setEventMessages($object->error, $object->errors, 'errors');
@@ -411,7 +409,8 @@ if (empty($reshook)) {
 			$object->status = $object::STATUS_TRANSFERED;
 			$object->date_reelle_arrivee = null;
 			$object->update($user);
-			$result = $object->call_trigger('STOCKTRANSFER_ADDSTOCK_CANCEL', $user);
+			$object->context = array_merge($object->context, array('stocktransfer_operation' => 'addstock_cancel'));
+			$result = $object->call_trigger('STOCKTRANSFER_MODIFY', $user);
 			if ($result < 0) {
 				$error++;
 				setEventMessages($object->error, $object->errors, 'errors');

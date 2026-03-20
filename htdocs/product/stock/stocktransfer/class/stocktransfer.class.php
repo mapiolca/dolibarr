@@ -635,7 +635,8 @@ class StockTransfer extends CommonObject
 
 			if (!$error && !$notrigger) {
 				// Call trigger
-				$result = $this->call_trigger('STOCKTRANSFER_VALIDATE', $user);
+				$this->context = array_merge($this->context, array('stocktransfer_operation' => 'validate'));
+				$result = $this->call_trigger('STOCKTRANSFER_MODIFY', $user);
 				if ($result < 0) {
 					$error++;
 				}
@@ -718,7 +719,8 @@ class StockTransfer extends CommonObject
 			return 0;
 		}
 
-		return $this->setStatusCommon($user, self::STATUS_DRAFT, $notrigger, 'STOCKTRANSFER_UNVALIDATE');
+		$this->context = array_merge($this->context, array('stocktransfer_operation' => 'setdraft'));
+		return $this->setStatusCommon($user, self::STATUS_DRAFT, $notrigger, 'STOCKTRANSFER_MODIFY');
 	}
 
 	/**
@@ -735,7 +737,8 @@ class StockTransfer extends CommonObject
 			return 0;
 		}
 
-		return $this->setStatusCommon($user, self::STATUS_CLOSED, $notrigger, 'STOCKTRANSFER_CLOSE');
+		$this->context = array_merge($this->context, array('stocktransfer_operation' => 'cancel'));
+		return $this->setStatusCommon($user, self::STATUS_CLOSED, $notrigger, 'STOCKTRANSFER_MODIFY');
 	}
 
 	/**
@@ -752,7 +755,8 @@ class StockTransfer extends CommonObject
 			return 0;
 		}
 
-		return $this->setStatusCommon($user, self::STATUS_VALIDATED, $notrigger, 'STOCKTRANSFER_REOPEN');
+		$this->context = array_merge($this->context, array('stocktransfer_operation' => 'reopen'));
+		return $this->setStatusCommon($user, self::STATUS_VALIDATED, $notrigger, 'STOCKTRANSFER_MODIFY');
 	}
 
 	/**
