@@ -950,6 +950,10 @@ class Notify
 								$eventKey = 'Notify_STOCKTRANSFER_MODIFY';
 								if (!empty($object->context['stocktransfer_event'])) {
 									$eventKeyCandidate = 'Notify_STOCKTRANSFER_MODIFY_'.strtoupper($object->context['stocktransfer_event']);
+									$templateCandidate = 'STOCKTRANSFER_MODIFY_'.strtoupper($object->context['stocktransfer_event']).'_TEMPLATE';
+									if (!empty(getDolGlobalString($templateCandidate))) {
+										$template = $templateCandidate;
+									}
 									if ($outputlangs->transnoentities($eventKeyCandidate) != $eventKeyCandidate) {
 										$eventKey = $eventKeyCandidate;
 									}
