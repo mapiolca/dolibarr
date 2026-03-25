@@ -169,14 +169,7 @@ class Notify
 		'ACTION_CREATE',
 		'CONTRACT_MODIFY',
 		'STOCKTRANSFER_CREATE',
-		'STOCKTRANSFER_MODIFY',
-		'STOCKTRANSFER_VALIDATE',
-		'STOCKTRANSFER_UNVALIDATE',
-		'STOCKTRANSFER_CLOSE',
-		'STOCKTRANSFER_DESTOCK',
-		'STOCKTRANSFER_DESTOCK_CANCEL',
-		'STOCKTRANSFER_ADDSTOCK',
-		'STOCKTRANSFER_ADDSTOCK_CANCEL'
+		'STOCKTRANSFER_MODIFY'
 	);
 
 	/**
@@ -943,6 +936,30 @@ class Notify
 								$object_type = 'contract';
 								$mesg = $outputlangs->transnoentitiesnoconv("EMailTextContractModified", $link, $context_info);
 								break;
+							case 'STOCKTRANSFER_CREATE':
+								$link = '<a href="'.$urlwithroot.'/product/stock/stocktransfer/stocktransfer_card.php?id='.$object->id.'&entity='.$object->entity.'">'.$newref.'</a>';
+								$dir_output = $conf->stocktransfer->dir_output."/stocktransfer/".dol_sanitizeFileName($newref);
+								$object_type = 'stocktransfer';
+								$mesg = $outputlangs->transnoentitiesnoconv('Notify_STOCKTRANSFER_CREATE')." ".$link;
+								break;
+							case 'STOCKTRANSFER_MODIFY':
+								$link = '<a href="'.$urlwithroot.'/product/stock/stocktransfer/stocktransfer_card.php?id='.$object->id.'&entity='.$object->entity.'">'.$newref.'</a>';
+								$dir_output = $conf->stocktransfer->dir_output."/stocktransfer/".dol_sanitizeFileName($newref);
+								$object_type = 'stocktransfer';
+								$template = 'STOCKTRANSFER_MODIFY_TEMPLATE';
+								$eventKey = 'Notify_STOCKTRANSFER_MODIFY';
+								if (!empty($object->context['stocktransfer_event'])) {
+									$eventKeyCandidate = 'Notify_STOCKTRANSFER_MODIFY_'.strtoupper($object->context['stocktransfer_event']);
+									$templateCandidate = 'STOCKTRANSFER_MODIFY_'.strtoupper($object->context['stocktransfer_event']).'_TEMPLATE';
+									if (!empty(getDolGlobalString($templateCandidate))) {
+										$template = $templateCandidate;
+									}
+									if ($outputlangs->transnoentities($eventKeyCandidate) != $eventKeyCandidate) {
+										$eventKey = $eventKeyCandidate;
+									}
+								}
+								$mesg = $outputlangs->transnoentitiesnoconv($eventKey)." ".$link;
+								break;
 							default:
 								$object_type = $object->element;
 								$dir_output = $conf->$object_type->multidir_output[$object->entity ? $object->entity : $conf->entity]."/".get_exdir(0, 0, 0, 1, $object, $object_type);
@@ -955,7 +972,9 @@ class Notify
 						$formmail = new FormMail($this->db);
 						$arraydefaultmessage = null;
 
-						$template = $notifcode.'_TEMPLATE';
+						if (empty($template)) {
+							$template = $notifcode.'_TEMPLATE';
+						}
 						$labeltouse = getDolGlobalString($template);
 						if (!empty($labeltouse)) {
 							$arraydefaultmessage = $formmail->getEMailTemplate($this->db, $object_type, $user, $outputlangs, 0, 1, $labeltouse);
