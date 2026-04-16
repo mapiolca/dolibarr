@@ -17,6 +17,7 @@ ApprovedCP=Approved
 CancelCP=Canceled
 RefuseCP=Refused
 ValidatorCP=Approver
+SecondaryValidatorUser=Second Approver
 ListeCP=List of leave
 Leave=Leave request
 LeaveId=Leave ID
