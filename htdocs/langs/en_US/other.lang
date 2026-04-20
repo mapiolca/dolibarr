@@ -429,6 +429,8 @@ SendPrompt=Send
 ConfirmAiAction=Are you sure you want to %1$s using the %2$s tool?
 
 Notify_STOCKTRANSFER_CREATE=Stock transfer created
+Notify_STOCKTRANSFER_MODIFY=Stock transfer modified
+Notify_STOCKTRANSFER_DELETE=Stock transfer deleted
 Notify_STOCKTRANSFER_VALIDATE=Stock transfer validated
 Notify_STOCKTRANSFER_UNVALIDATE=Stock transfer set back to draft
 Notify_STOCKTRANSFER_DESTOCK=Source stock decreased for stock transfer

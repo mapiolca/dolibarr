@@ -170,6 +170,7 @@ class Notify
 		'CONTRACT_MODIFY',
 		'STOCKTRANSFER_CREATE',
 		'STOCKTRANSFER_MODIFY',
+		'STOCKTRANSFER_DELETE',
 		'STOCKTRANSFER_VALIDATE',
 		'STOCKTRANSFER_UNVALIDATE',
 		'STOCKTRANSFER_CLOSE',
@@ -178,6 +179,51 @@ class Notify
 		'STOCKTRANSFER_ADDSTOCK',
 		'STOCKTRANSFER_ADDSTOCK_CANCEL'
 	);
+
+	/**
+	 * Return list of notification codes to search.
+	 * This allows backward compatibility of notification subscriptions while keeping CRUD trigger events.
+	 *
+	 * @param	string			$notifcode	Code of action in llx_c_action_trigger
+	 * @param	CommonObject	$object		Object the notification is about
+	 * @return	array<string>
+	 */
+	private function getNotificationCodesToSearch($notifcode, $object = null)
+	{
+		$notifcodes = array($notifcode);
+
+		if ($notifcode !== 'STOCKTRANSFER_MODIFY' || !is_object($object)) {
+			return $notifcodes;
+		}
+
+		$operation = empty($object->context['stocktransfer_operation']) ? '' : $object->context['stocktransfer_operation'];
+		switch ($operation) {
+			case 'validate':
+				$notifcodes[] = 'STOCKTRANSFER_VALIDATE';
+				break;
+			case 'setdraft':
+				$notifcodes[] = 'STOCKTRANSFER_UNVALIDATE';
+				break;
+			case 'cancel':
+				$notifcodes[] = 'STOCKTRANSFER_CLOSE';
+				break;
+			case 'destock':
+				$notifcodes[] = 'STOCKTRANSFER_DESTOCK';
+				break;
+			case 'destock_cancel':
+				$notifcodes[] = 'STOCKTRANSFER_DESTOCK_CANCEL';
+				break;
+			case 'addstock':
+				$notifcodes[] = 'STOCKTRANSFER_CLOSE';
+				$notifcodes[] = 'STOCKTRANSFER_ADDSTOCK';
+				break;
+			case 'addstock_cancel':
+				$notifcodes[] = 'STOCKTRANSFER_ADDSTOCK_CANCEL';
+				break;
+		}
+
+		return array_unique($notifcodes);
+	}
 
 	/**
 	 *	Constructor
@@ -482,7 +528,8 @@ class Notify
 			if (is_numeric($notifcode)) {
 				$sqlnotifcode = " AND n.fk_action = ".((int) $notifcode); // Old usage
 			} else {
-				$sqlnotifcode = " AND a.code = '".$this->db->escape($notifcode)."'"; // New usage
+				$notifcodestosearch = $this->getNotificationCodesToSearch($notifcode, $object);
+				$sqlnotifcode = " AND a.code IN ('".implode("','", array_map(array($this->db, 'escape'), $notifcodestosearch))."')"; // New usage
 			}
 		}
 
@@ -574,7 +621,15 @@ class Notify
 				// List of notifications enabled for fixed email
 				foreach ($conf->global as $key => $val) {
 					if ($notifcode) {
-						if ($val == '' || !preg_match('/^NOTIFICATION_FIXEDEMAIL_'.$notifcode.'_THRESHOLD_HIGHER_(.*)$/', $key, $reg)) {
+						$notifcodestosearch = is_numeric($notifcode) ? array($notifcode) : $this->getNotificationCodesToSearch($notifcode, $object);
+						$foundmatch = false;
+						foreach ($notifcodestosearch as $tmpnotifcode) {
+							if (preg_match('/^NOTIFICATION_FIXEDEMAIL_'.$tmpnotifcode.'_THRESHOLD_HIGHER_(.*)$/', $key, $reg)) {
+								$foundmatch = true;
+								break;
+							}
+						}
+						if ($val == '' || !$foundmatch) {
 							continue;
 						}
 					} else {
@@ -652,6 +707,7 @@ class Notify
 		if (!in_array($notifcode, Notify::$arrayofnotifsupported)) {
 			return 0;
 		}
+		$notifcodestosearch = is_numeric($notifcode) ? array($notifcode) : $this->getNotificationCodesToSearch($notifcode, $object);
 
 		include_once DOL_DOCUMENT_ROOT.'/core/lib/files.lib.php';
 
@@ -700,7 +756,7 @@ class Notify
 			if (is_numeric($notifcode)) {
 				$sql .= " AND n.fk_action = ".((int) $notifcode); // Old usage
 			} else {
-				$sql .= " AND a.code = '".$this->db->escape($notifcode)."'"; // New usage
+				$sql .= " AND a.code IN ('".implode("','", array_map(array($this->db, 'escape'), $notifcodestosearch))."')"; // New usage
 			}
 			$sql .= " AND s.rowid = ".((int) $object->socid);
 
@@ -718,7 +774,7 @@ class Notify
 		if (is_numeric($notifcode)) {
 			$sql .= " AND n.fk_action = ".((int) $notifcode); // Old usage
 		} else {
-			$sql .= " AND a.code = '".$this->db->escape($notifcode)."'"; // New usage
+			$sql .= " AND a.code IN ('".implode("','", array_map(array($this->db, 'escape'), $notifcodestosearch))."')"; // New usage
 		}
 
 		// Check notification fixed
@@ -1073,7 +1129,14 @@ class Notify
 		if (!$error) {
 			foreach ($conf->global as $key => $val) {
 				$reg = array();
-				if ($val == '' || !preg_match('/^NOTIFICATION_FIXEDEMAIL_'.$notifcode.'_THRESHOLD_HIGHER_(.*)$/', $key, $reg)) {
+				$matchednotifcode = '';
+				foreach ($notifcodestosearch as $tmpnotifcode) {
+					if (preg_match('/^NOTIFICATION_FIXEDEMAIL_'.$tmpnotifcode.'_THRESHOLD_HIGHER_(.*)$/', $key, $reg)) {
+						$matchednotifcode = $tmpnotifcode;
+						break;
+					}
+				}
+				if ($val == '' || empty($matchednotifcode)) {
 					continue;
 				}
 
@@ -1081,11 +1144,11 @@ class Notify
 
 				$threshold = (float) $reg[1];
 				if (!empty($object->total_ht) && $object->total_ht <= $threshold) {
-					dol_syslog("A notification is requested for notifcode = ".$notifcode." but amount = ".$object->total_ht." so lower than threshold = ".$threshold.". We discard this notification");
+					dol_syslog("A notification is requested for notifcode = ".$matchednotifcode." but amount = ".$object->total_ht." so lower than threshold = ".$threshold.". We discard this notification");
 					continue;
 				}
 
-				$notifcodedefid = dol_getIdFromCode($this->db, $notifcode, 'c_action_trigger', 'code', 'rowid');
+				$notifcodedefid = dol_getIdFromCode($this->db, $matchednotifcode, 'c_action_trigger', 'code', 'rowid');
 				if ($notifcodedefid <= 0) {
 					dol_print_error($this->db, 'Failed to get id from code');
 				}
@@ -1099,7 +1162,7 @@ class Notify
 
 				$subject = '['.$appli.'] '.$langs->transnoentitiesnoconv("DolibarrNotification").($projtitle ? ' '.$projtitle : '');
 
-				switch ($notifcode) {
+				switch ($matchednotifcode) {
 					case 'BILL_VALIDATE':
 						$link = '<a href="'.$urlwithroot.'/compta/facture/card.php?facid='.$object->id.'&entity='.$object->entity.'">'.$newref.'</a>';
 						$dir_output = $conf->facture->dir_output."/".get_exdir(0, 0, 0, 1, $object, 'invoice');

@@ -201,6 +201,7 @@ INSERT IGNORE INTO llx_c_action_trigger (code,label,description,elementtype,rang
 INSERT IGNORE INTO llx_c_action_trigger (code,label,description,elementtype,rang) VALUES ('STOCKTRANSFER_CLOSE','Stock transfer closed','Executed when a stock transfer is closed after destination stock increment','stocktransfer',676);
 INSERT IGNORE INTO llx_c_action_trigger (code,label,description,elementtype,rang) VALUES ('STOCKTRANSFER_ADDSTOCK','Stock transfer destination stock incremented','Executed when destination warehouses stock is incremented for a stock transfer','stocktransfer',677);
 INSERT IGNORE INTO llx_c_action_trigger (code,label,description,elementtype,rang) VALUES ('STOCKTRANSFER_ADDSTOCK_CANCEL','Stock transfer destination stock increment canceled','Executed when destination warehouses stock increment is canceled for a stock transfer','stocktransfer',678);
+INSERT IGNORE INTO llx_c_action_trigger (code,label,description,elementtype,rang) VALUES ('STOCKTRANSFER_DELETE','Stock transfer deleted','Executed when a stock transfer is deleted','stocktransfer',679);
 
 ALTER TABLE llx_c_ticket_category ADD COLUMN fk_ticket_type integer NULL;
 
