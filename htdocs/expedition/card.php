@@ -152,6 +152,8 @@ $permissiondellink = $user->hasRight('expedition', 'delivery', 'creer'); // Used
 $permissiontoadd = $user->hasRight('expedition', 'creer');
 $permissiontoedit = $usercancreate; // Used by the include of actions_lineupdown.inc.php
 $permissiontoeditextra = $permissiontoadd;
+$shipmentfromordercanaddproduct = (getDolGlobalString('SHIPMENT_FROM_ORDER_CAN_ADD_PRODUCT') && !empty($object->origin_type) && $object->origin_type == 'commande' && $object->origin_id > 0);
+$shipmentallowfreelines = ((!$origin && getDolGlobalString('SHIPMENT_STANDALONE')) || $shipmentfromordercanaddproduct);
 if (GETPOST('attribute', 'aZ09') && isset($extrafields->attributes[$object->table_element]['perms'][GETPOST('attribute', 'aZ09')])) {
 	// For action 'update_extras', is there a specific permission set for the attribute to update
 	$permissiontoeditextra = dol_eval((string) $extrafields->attributes[$object->table_element]['perms'][GETPOST('attribute', 'aZ09')]);
@@ -849,7 +851,15 @@ if (empty($reshook)) {
 			setEventMessages($line->error, $line->errors, 'errors');
 		}
 	} elseif ($action == 'updateline' && $permissiontoadd && GETPOST('save')) {
-		if (!$origin && getDolGlobalString('SHIPMENT_STANDALONE')) {
+		$isfreeactionline = false;
+		if ($shipmentallowfreelines) {
+			$shipline = new ExpeditionLigne($db);
+			if ($shipline->fetch(GETPOSTINT('lineid')) > 0) {
+				$isfreeactionline = (empty($shipline->fk_elementdet) || $shipline->element_type == 'shipping');
+			}
+		}
+
+		if ($isfreeactionline) {
 			// Update a line
 			// Clean parameters
 
@@ -859,12 +869,12 @@ if (empty($reshook)) {
 			$object->fetch_thirdparty();
 
 			$qty = GETPOST('qty', 'alpha');
-			$description = '';
+			$description = $shipline->description;
 			$fk_parent = 0;
 			$element_type = 'shipping';
-			$fk_unit = '';
-			$fk_product = 0;
-			$rang = 0;
+			$fk_unit = $shipline->fk_unit;
+			$fk_product = (int) $shipline->fk_product;
+			$rang = $shipline->rang;
 
 			// Extrafields
 			$extralabelsline = $extrafields->fetch_name_optionals_label($object->table_element_line);
@@ -876,10 +886,6 @@ if (empty($reshook)) {
 					unset($_POST["options_" . $key]);
 				}
 			}
-
-			$shipline = new ExpeditionLigne($db);
-			$shipline->fetch(GETPOSTINT('lineid'));
-
 
 			if (!$error) {
 				$result = $object->updatelinefree(GETPOSTINT('lineid'), (float) $qty, $element_type, $fk_product, GETPOSTINT('units'), $rang, $description, $fk_parent, 0, $array_options);
@@ -910,7 +916,7 @@ if (empty($reshook)) {
 					setEventMessages($object->error, $object->errors, 'errors');
 				}
 			}
-		} elseif ($origin && $origin_id > 0) {
+		} elseif ((!empty($origin) && $origin_id > 0) || (!empty($object->origin) && $object->origin_id > 0)) {
 			// Update a line
 			// Clean parameters
 			$qty = 0;
@@ -1150,7 +1156,7 @@ if (empty($reshook)) {
 	} elseif ($action == 'updateline' && $permissiontoadd && GETPOST('cancel', 'alpha') == $langs->trans("Cancel")) {
 		header('Location: ' . $_SERVER['PHP_SELF'] . '?id=' . $object->id); // To redisplay the form being edited
 		exit();
-	} elseif ($action == 'addline' && !$origin && getDolGlobalString('SHIPMENT_STANDALONE') && $usercancreate) {	// Add a new line
+	} elseif ($action == 'addline' && $shipmentallowfreelines && $usercancreate) {	// Add a new line
 		$langs->load('errors');
 		$error = 0;
 		$line_desc = (GETPOSTISSET('dp_desc') ? GETPOST('dp_desc', 'restricthtml') : '');
@@ -2617,6 +2623,18 @@ if ($action == 'create' && $usercancreate) {
 	// Edit and view mode
 
 	$lines = $object->lines;
+	$isEditingOriginLine = false;
+	if (!empty($object->origin) && $object->origin_id > 0) {
+		$lines = array_values(array_filter($lines, function ($line) {
+			return !empty($line->origin_line_id);
+		}));
+		foreach ($lines as $line) {
+			if ((int) $line->id == $line_id) {
+				$isEditingOriginLine = true;
+				break;
+			}
+		}
+	}
 
 	$num_prod = count($lines);
 
@@ -3137,7 +3155,7 @@ if ($action == 'create' && $usercancreate) {
 
 	// Lines of products of origin
 	if (!empty($object->origin) && $object->origin_id > 0) {
-		if ($action == 'editline') {
+		if ($action == 'editline' && $isEditingOriginLine) {
 			print '	<form name="updateline" id="updateline" action="' . $_SERVER["PHP_SELF"] . '?id=' . $object->id . '&amp;lineid=' . $line_id . '" method="POST">
 			<input type="hidden" name="token" value="' . newToken() . '">
 			<input type="hidden" name="action" value="updateline">
@@ -3699,6 +3717,60 @@ if ($action == 'create' && $usercancreate) {
 		print '</div>';
 
 		$object->fetchObjectLinked($object->id, $object->element);
+	}
+
+	// Lines added directly on shipments created from a customer order
+	if ($shipmentfromordercanaddproduct && !empty($object->table_element_line)) {
+		$originlines = $object->lines;
+		$result = $object->fetch_lines_free(true);
+		$freeLineIds = array();
+		foreach ($object->lines as $freeline) {
+			$freeLineIds[] = (int) $freeline->id;
+		}
+		$num_prod += count($object->lines);
+
+		if ($action != 'editline' || in_array($line_id, $freeLineIds)) {
+			print '	<form name="addproduct" id="addproduct" action="'.$_SERVER["PHP_SELF"].'?id='.$object->id.(($action != 'editline') ? '' : '#line_'.GETPOSTINT('lineid')).'" method="POST">
+			<input type="hidden" name="token" value="' . newToken().'">
+			<input type="hidden" name="action" value="' . (($action != 'editline') ? 'addline' : 'updateline').'">
+			<input type="hidden" name="mode" value="">
+			<input type="hidden" name="page_y" value="">
+			<input type="hidden" name="id" value="' . $object->id.'">
+			';
+
+			if (!empty($conf->use_javascript_ajax) && $object->status == 0) {
+				include DOL_DOCUMENT_ROOT.'/core/tpl/ajaxrow.tpl.php';
+			}
+
+			print '<div class="div-table-responsive-no-min">';
+			if (!empty($object->lines) || ($object->status == $object::STATUS_DRAFT && $permissiontoadd && $action != 'selectlines' && $action != 'editline')) {
+				print '<table id="tablelinesfree" class="noborder noshadow" width="100%">';
+			}
+
+			if (!empty($object->lines)) {
+				$object->printObjectLines($action, $mysoc, null, GETPOSTINT('lineid'), 1, '/expedition/tpl');
+			}
+
+			if ($object->status == Expedition::STATUS_DRAFT && $permissiontoadd && $action != 'selectlines' && $action != 'editline') {
+				$parameters = array();
+				$reshook = $hookmanager->executeHooks('formAddObjectLine', $parameters, $object, $action); // Note that $action and $object may have been modified by hook
+				if ($reshook < 0) {
+					setEventMessages($hookmanager->error, $hookmanager->errors, 'errors');
+				}
+				if (empty($reshook)) {
+					$object->formAddObjectLine(1, $mysoc, $soc);
+				}
+			}
+
+			if (!empty($object->lines) || ($object->status == $object::STATUS_DRAFT && $permissiontoadd && $action != 'selectlines' && $action != 'editline')) {
+				print '</table>';
+			}
+			print '</div>';
+
+			print "</form>\n";
+		}
+
+		$object->lines = $originlines;
 	}
 
 	/*
