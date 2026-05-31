@@ -8,6 +8,7 @@
  * Copyright (C) 2018-2025  Frédéric France         <frederic.france@free.fr>
  * Copyright (C) 2024-2025	MDW						<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024		William Mead			<william.mead@manchenumerique.fr>
+ * Copyright (C) 2026  Pierre Ardoin         <developpeur@lesmetiersdubatiment.fr>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2444,6 +2445,7 @@ class ActionComm extends CommonObject
 				$sql .= " WHERE u.rowid = x.fk_user";
 				$sql .= " AND u.statut = '1'"; // Show only active users  (0 = inactive user, 1 = active user)
 				$sql .= " AND (x.statut = '2' OR x.statut = '3')"; // Show only public leaves (2 = leave wait for approval, 3 = leave approved)
+				$sql .= " AND x.entity IN (".getEntity('holiday').")";
 
 				$resql = $this->db->query($sql);
 				if ($resql) {

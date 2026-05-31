@@ -10,6 +10,7 @@
  * Copyright (C) 2021-2025  Frédéric France         <frederic.france@free.fr>
  * Copyright (C) 2024-2025	MDW						<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2026		Anthony Berton		<anthony.berton@bb2a.fr>
+ * Copyright (C) 2026  Pierre Ardoin         <developpeur@lesmetiersdubatiment.fr>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1165,6 +1166,7 @@ if ($user->hasRight("holiday", "read")) {
 	$sql .= " WHERE u.rowid = x.fk_user";
 	$sql .= " AND u.statut = '1'"; // Show only active users  (0 = inactive user, 1 = active user)
 	$sql .= " AND (x.statut = '2' OR x.statut = '3')"; // Show only public leaves (2 = leave wait for approval, 3 = leave approved)
+	$sql .= " AND x.entity IN (".getEntity('holiday').")";
 	if ($mode == 'show_day') {
 		// Request only leaves for the current selected day
 		$sql .= " AND '".$db->escape($year)."-".$db->escape($month)."-".$db->escape($day)."' BETWEEN x.date_debut AND x.date_fin";	// date_debut and date_fin are date without time
@@ -1211,6 +1213,9 @@ if ($user->hasRight("holiday", "read")) {
 			$event->datef                   = $db->jdate($obj->date_end) + (empty($obj->halfday) || $obj->halfday == -1 ? 24 : 12) * 60 * 60 - 1;
 			$event->date_start_in_calendar  = $event->datep;
 			$event->date_end_in_calendar    = $event->datef;
+
+			$event->userownerid = $obj->uid; // user id of owner
+			$event->userassigned = array($obj->uid => array('id' => $obj->uid, 'transparency' => 1));
 
 			if ($obj->status == 3) {
 				// Show no symbol for leave with state "leave approved"
