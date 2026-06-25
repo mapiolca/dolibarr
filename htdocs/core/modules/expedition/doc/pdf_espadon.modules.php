@@ -5,9 +5,10 @@
  * Copyright (C) 2014-2015  Marcos García				<marcosgdf@gmail.com>
  * Copyright (C) 2018-2025  Frédéric France				<frederic.france@free.fr>
  * Copyright (C) 2023 		Charlene Benke				<charlene@patas-monkey.com>
- * Copyright (C) 2024-2025	MDW							<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2024-2026	MDW							<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024	    Nick Fragoulis
  * Copyright (C) 2024		Alexandre Spangaro			<alexandre@inovea-conseil.com>
+ * Copyright (C) 2026		Pierre Ardoin				<developpeur@lesmetiersdubatiment.fr>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,9 +32,11 @@
  */
 
 require_once DOL_DOCUMENT_ROOT.'/core/modules/expedition/modules_expedition.php';
+require_once DOL_DOCUMENT_ROOT.'/expedition/class/expedition.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/company.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/pdf.lib.php';
 require_once DOL_DOCUMENT_ROOT.'/core/lib/functions2.lib.php';
+require_once DOL_DOCUMENT_ROOT.'/product/class/product.class.php';
 
 /**
  *	Class to build sending documents with model Espadon
@@ -128,6 +131,87 @@ class pdf_espadon extends ModelePdfExpedition
 		$this->tabTitleHeight = 5; // default height
 	}
 
+	/**
+	 * Add catalog lines created directly on an order-based shipment to PDF lines.
+	 *
+	 * @param	Expedition	$object			Shipment object
+	 * @param	Translate	$outputlangs	Output language
+	 * @return	void
+	 */
+	private function addAdditionalCatalogLines($object, $outputlangs)
+	{
+		if (empty($object->id) || !($object->origin_id > 0)) {
+			return;
+		}
+
+		$existingLineIds = array();
+		if (is_array($object->lines)) {
+			foreach ($object->lines as $existingLine) {
+				if (!empty($existingLine->id)) {
+					$existingLineIds[(int) $existingLine->id] = true;
+				}
+			}
+		} else {
+			$object->lines = array();
+		}
+
+		$tmpobject = new Expedition($this->db);
+		$tmpobject->id = $object->id;
+		if ($tmpobject->fetch_lines_free() <= 0) {
+			return;
+		}
+
+		foreach ($tmpobject->lines as $line) {
+			if (!empty($line->id) && !empty($existingLineIds[(int) $line->id])) {
+				continue;
+			}
+			if (!empty($line->fk_elementdet) || (!empty($line->element_type) && $line->element_type !== 'shipping')) {
+				continue;
+			}
+
+			$line->origin_line_id = 0;
+			$line->fk_elementdet = 0;
+			$line->qty_asked = $line->qty;
+			$line->qty_shipped = $line->qty;
+			$line->special_code = 0;
+			$line->subprice = 0;
+			$line->total_ht = 0;
+			$line->total_tva = 0;
+			$line->total_ttc = 0;
+			$line->desc = $line->description;
+			$line->ref = '';
+			$line->product_label = '';
+			$line->label = '';
+			$line->fk_product_type = Product::TYPE_PRODUCT;
+			$line->product_type = Product::TYPE_PRODUCT;
+			$line->weight = 0;
+			$line->weight_units = 0;
+			$line->volume = 0;
+			$line->volume_units = 0;
+
+			if ($line->fk_product > 0) {
+				$product = new Product($this->db);
+				if ($product->fetch($line->fk_product) > 0) {
+					$productLabel = (!empty($product->multilangs[$outputlangs->defaultlang]["label"])) ? $product->multilangs[$outputlangs->defaultlang]["label"] : $product->label;
+					$line->ref = $product->ref;
+					$line->product_label = $productLabel;
+					$line->label = $productLabel;
+					$line->fk_product_type = $product->type;
+					$line->product_type = $product->type;
+					$line->weight = $product->weight;
+					$line->weight_units = (int) ($product->weight_units ?? 0);
+					$line->volume = $product->volume;
+					$line->volume_units = (int) ($product->volume_units ?? 0);
+					if (empty($line->fk_unit)) {
+						$line->fk_unit = $product->fk_unit;
+					}
+				}
+			}
+
+			$object->lines[] = $line;
+		}
+	}
+
 	// phpcs:disable PEAR.NamingConventions.ValidFunctionName.ScopeNotCamelCaps
 	/**
 	 *  Function to build pdf onto disk
@@ -162,6 +246,8 @@ class pdf_espadon extends ModelePdfExpedition
 		if ($object->statut == $object::STATUS_DRAFT && (getDolGlobalString('SHIPPING_DRAFT_WATERMARK'))) {
 			$this->watermark = getDolGlobalString('SHIPPING_DRAFT_WATERMARK');
 		}
+
+		$this->addAdditionalCatalogLines($object, $outputlangs);
 
 		global $outputlangsbis;
 		$outputlangsbis = null;
@@ -288,7 +374,7 @@ class pdf_espadon extends ModelePdfExpedition
 				$pdf->SetTitle($outputlangs->convToOutputCharset($object->ref));
 				$pdf->SetSubject($outputlangs->transnoentities("Shipment"));
 				$pdf->SetCreator("Dolibarr ".DOL_VERSION);
-				$pdf->SetAuthor($outputlangs->convToOutputCharset($user->getFullName($outputlangs)));
+				$pdf->SetAuthor($outputlangs->convToOutputCharset($user->getAnonymisableFullName($outputlangs)));
 				$pdf->SetKeyWords($outputlangs->convToOutputCharset($object->ref)." ".$outputlangs->transnoentities("Shipment"));
 				if (getDolGlobalString('MAIN_DISABLE_PDF_COMPRESSION')) {
 					$pdf->SetCompression(false);
@@ -358,7 +444,7 @@ class pdf_espadon extends ModelePdfExpedition
 						$pdf->writeHTMLCell(60, 4, $this->posxdesc - 1, $tab_top - 1, $outputlangs->transnoentities("TrackingNumber") . " : " . $object->tracking_number, 0, 1, false, true, 'L');
 						$tab_top_alt = $pdf->GetY();
 
-						$object->getUrlTrackingStatus($object->tracking_number);
+						$object->getUrlTrackingStatus((string) $object->tracking_number);
 						if (!empty($object->tracking_url)) {
 							if ($object->shipping_method_id > 0) {
 								// Get code using getLabelFromKey
@@ -536,10 +622,10 @@ class pdf_espadon extends ModelePdfExpedition
 					$barcode_path = '';
 					$result = 0;
 					if ($module->encodingIsSupported($encoding)) {
-						$result = $module->writeBarCode($object->ref, $encoding);
+						$result = $module->writeBarCode((string) $object->ref, $encoding);
 
 						// get path of qrcode image
-						$newcode = $object->ref;
+						$newcode = (string) $object->ref;
 						if (!preg_match('/^\w+$/', $newcode) || dol_strlen($newcode) > 32) {
 							$newcode = dol_hash($newcode, 'md5');
 						}
@@ -960,7 +1046,7 @@ class pdf_espadon extends ModelePdfExpedition
 		}
 
 		if ($this->getColumnStatus('qty_shipped') && $totalToShip) {
-			$this->printStdColumnContent($pdf, $tab2_top, 'qty_shipped', $totalToShip);
+			$this->printStdColumnContent($pdf, $tab2_top, 'qty_shipped', (string) $totalToShip);
 		}
 
 		if ($this->getColumnStatus('totalexcltax')) {
@@ -1137,14 +1223,14 @@ class pdf_espadon extends ModelePdfExpedition
 			$posy += 4;
 			$pdf->SetXY($posx, $posy);
 			$pdf->SetTextColor(0, 0, 60);
-			$pdf->MultiCell($w, 3, $outputlangs->transnoentities("CustomerCode")." : ".$outputlangs->transnoentities($object->thirdparty->code_client), '', 'R');
+			$pdf->MultiCell($w, 3, $outputlangs->transnoentities("CustomerCode")." : ".$outputlangs->transnoentities((string) $object->thirdparty->code_client), '', 'R');
 		}
 
 		if (!getDolGlobalString('MAIN_PDF_HIDE_CUSTOMER_ACCOUNTING_CODE') && !empty($object->thirdparty->code_compta_client)) {
 			$posy += 4;
 			$pdf->SetXY($posx, $posy);
 			$pdf->SetTextColor(0, 0, 60);
-			$pdf->MultiCell($w, 3, $outputlangs->transnoentities("CustomerAccountancyCode")." : ".$outputlangs->transnoentities($object->thirdparty->code_compta_client), '', 'R');
+			$pdf->MultiCell($w, 3, $outputlangs->transnoentities("CustomerAccountancyCode")." : ".$outputlangs->transnoentities((string) $object->thirdparty->code_compta_client), '', 'R');
 		}
 
 		$pdf->SetFont('', '', $default_font_size + 3);
