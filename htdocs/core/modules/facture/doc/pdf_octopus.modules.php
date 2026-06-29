@@ -171,7 +171,7 @@ class pdf_octopus extends ModelePDFFactures
 		if (getDolGlobalString('INVOICE_USE_SITUATION_RETAINED_WARRANTY') && !getDolGlobalString('INVOICE_USE_RETAINED_WARRANTY')) {
 			// before it was only for final situation invoice
 			$conf->global->INVOICE_USE_RETAINED_WARRANTY = getDolGlobalString('INVOICE_USE_SITUATION_RETAINED_WARRANTY');
-			$conf->global->USE_RETAINED_WARRANTY_ONLY_FOR_SITUATION_FINAL = 1;
+			$conf->global->INVOICE_RETAINED_WARRANTY_LIMITED_TO_FINAL_SITUATION = 1;
 		}
 
 		// If hidden option INVOICE_USE_SITUATION is set to 2, we can show the invoice situation template
@@ -3365,8 +3365,11 @@ class pdf_octopus extends ModelePDFFactures
 				}
 			}
 
-			if (! empty($previousInvoice->retained_warranty) && !getDolGlobalString('USE_RETAINED_WARRANTY_ONLY_FOR_SITUATION_FINAL')) {
-				$retenue_garantie_anterieure += $previousInvoice->getRetainedWarrantyAmount();
+			if ($this->displayRetainedWarranty($previousInvoice)) {
+				$previousRetainedWarrantyAmount = $previousInvoice->getRetainedWarrantyAmount();
+				if ($previousRetainedWarrantyAmount >= 0) {
+					$retenue_garantie_anterieure += $previousRetainedWarrantyAmount;
+				}
 			}
 
 			//les cumuls
@@ -3443,7 +3446,7 @@ class pdf_octopus extends ModelePDFFactures
 		} else {
 			// FOR RETROCOMPATIBILITY
 
-			// TODO : add a flag on invoices to store this conf USE_RETAINED_WARRANTY_ONLY_FOR_SITUATION_FINAL
+			// TODO : add a flag on invoices to store this conf INVOICE_RETAINED_WARRANTY_LIMITED_TO_FINAL_SITUATION
 
 			// note : we don't need to test USE_RETAINED_WARRANTY_ONLY_FOR_SITUATION because if $object->retained_warranty is not empty it's because it was set when this conf was active
 
@@ -3451,7 +3454,7 @@ class pdf_octopus extends ModelePDFFactures
 			if (!empty($object->retained_warranty)) {
 				$displayWarranty = true;
 
-				if ($object->isSituationInvoice() && getDolGlobalString('USE_RETAINED_WARRANTY_ONLY_FOR_SITUATION_FINAL')) {
+				if ($object->isSituationInvoice() && getDolGlobalString('INVOICE_RETAINED_WARRANTY_LIMITED_TO_FINAL_SITUATION')) {
 					// Check if this situation invoice is 100% for real
 					$displayWarranty = false;
 					if (!empty($object->situation_final)) {

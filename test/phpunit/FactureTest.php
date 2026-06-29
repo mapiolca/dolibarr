@@ -185,6 +185,46 @@ class FactureTest extends CommonClassTest
 	}
 
 	/**
+	 * testRetainedWarrantyFinalSituationSetting
+	 *
+	 * @return  void
+	 */
+	public function testRetainedWarrantyFinalSituationSetting()
+	{
+		global $conf,$db;
+		$conf = $this->savconf;
+		$db = $this->savdb;
+
+		$confname = 'INVOICE_RETAINED_WARRANTY_LIMITED_TO_FINAL_SITUATION';
+		$hadPreviousValue = isset($conf->global->{$confname});
+		$previousValue = $hadPreviousValue ? $conf->global->{$confname} : null;
+
+		try {
+			unset($conf->global->{$confname});
+
+			$situationInvoice = $this->getRetainedWarrantyInvoiceForTest(true, false);
+			$this->assertTrue($situationInvoice->displayRetainedWarranty());
+			$this->assertEquals(60.0, $situationInvoice->getRetainedWarrantyAmount());
+
+			$conf->global->{$confname} = 1;
+
+			$situationInvoice = $this->getRetainedWarrantyInvoiceForTest(true, false);
+			$this->assertFalse($situationInvoice->displayRetainedWarranty());
+			$this->assertSame(-1, $situationInvoice->getRetainedWarrantyAmount());
+
+			$standardInvoice = $this->getRetainedWarrantyInvoiceForTest(false, false);
+			$this->assertTrue($standardInvoice->displayRetainedWarranty());
+			$this->assertEquals(60.0, $standardInvoice->getRetainedWarrantyAmount());
+		} finally {
+			if ($hadPreviousValue) {
+				$conf->global->{$confname} = $previousValue;
+			} else {
+				unset($conf->global->{$confname});
+			}
+		}
+	}
+
+	/**
 	 * testFactureOther
 	 *
 	 * @param   Facture $localobject Invoice
@@ -282,5 +322,26 @@ class FactureTest extends CommonClassTest
 	{
 		$localobject->note_private = 'New note';
 		//$localobject->note='New note after update';
+	}
+
+	/**
+	 * Create a lightweight invoice for retained warranty tests.
+	 *
+	 * @param	bool	$isSituationInvoice		Whether the invoice is a situation invoice
+	 * @param	bool	$isFinalSituation		Whether the situation invoice is final
+	 * @return	Facture
+	 */
+	private function getRetainedWarrantyInvoiceForTest($isSituationInvoice, $isFinalSituation)
+	{
+		global $db;
+
+		$invoice = new Facture($db);
+		$invoice->type = $isSituationInvoice ? Facture::TYPE_SITUATION : Facture::TYPE_STANDARD;
+		$invoice->total_ttc = 1200.0;
+		$invoice->retained_warranty = 5.0;
+		$invoice->situation_cycle_ref = $isSituationInvoice ? 1 : 0;
+		$invoice->situation_final = $isFinalSituation ? 1 : 0;
+
+		return $invoice;
 	}
 }

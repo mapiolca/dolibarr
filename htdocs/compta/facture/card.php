@@ -6370,16 +6370,9 @@ if ($action == 'create') {
 				print '</tr>';
 			}
 
-			// Retained warranty : usually use on construction industry
-			if (!empty($object->situation_final) && !empty($object->retained_warranty) && $displayWarranty) {
-				// Billed - retained warranty
-				if ($object->isSituationInvoice()) {
-					$retainedWarranty = $total_global_ttc * $object->retained_warranty / 100;
-				} else {
-					// Because one day retained warranty could be used on standard invoices
-					$retainedWarranty = $object->total_ttc * $object->retained_warranty / 100;
-				}
-
+			// Retained warranty : usually used in construction industry.
+			if ($object->displayRetainedWarranty()) {
+				$retainedWarranty = $object->getRetainedWarrantyAmount();
 				$billedWithRetainedWarranty = $object->total_ttc - $retainedWarranty;
 
 				print '<tr>';
