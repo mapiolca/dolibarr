@@ -187,6 +187,146 @@ class Notify
 		$this->db = $db;
 	}
 
+	/**
+	 * Parse a comma separated list of notification context codes.
+	 *
+	 * @param	string|null	$contexts	Context codes separated by commas
+	 * @return	string[]				List of normalized context codes
+	 */
+	public static function parseNotificationContextCodes($contexts)
+	{
+		$ret = array();
+		if (empty($contexts)) {
+			return $ret;
+		}
+
+		$contextarray = explode(',', (string) $contexts);
+		foreach ($contextarray as $context) {
+			$context = strtoupper(trim($context));
+			if ($context === '' || !preg_match('/^[A-Z0-9_]+$/', $context)) {
+				continue;
+			}
+
+			$ret[$context] = $context;
+		}
+
+		return array_values($ret);
+	}
+
+	/**
+	 * Return context codes declared for a notification trigger.
+	 *
+	 * @param	string|int	$notifcode	Code of action in llx_c_action_trigger or rowid for old usage
+	 * @return	string[]				List of context codes
+	 */
+	protected function getNotificationContextsForCode($notifcode)
+	{
+		static $cache = array();
+
+		$cachekey = is_numeric($notifcode) ? 'id:'.((int) $notifcode) : 'code:'.((string) $notifcode);
+		if (isset($cache[$cachekey])) {
+			return $cache[$cachekey];
+		}
+
+		$sql = "SELECT contexts";
+		$sql .= " FROM ".MAIN_DB_PREFIX."c_action_trigger";
+		if (is_numeric($notifcode)) {
+			$sql .= " WHERE rowid = ".((int) $notifcode);
+		} else {
+			$sql .= " WHERE code = '".$this->db->escape((string) $notifcode)."'";
+		}
+
+		$contexts = '';
+		$resql = $this->db->query($sql);
+		if ($resql) {
+			$obj = $this->db->fetch_object($resql);
+			if (is_object($obj)) {
+				$contexts = (string) $obj->contexts;
+			}
+			$this->db->free($resql);
+		} else {
+			dol_syslog(__METHOD__." failed to fetch notification contexts for notifcode=".$notifcode.": ".$this->db->lasterror(), LOG_WARNING);
+		}
+
+		$cache[$cachekey] = self::parseNotificationContextCodes($contexts);
+
+		return $cache[$cachekey];
+	}
+
+	/**
+	 * Resolve the email template to use for a notification, including optional business context.
+	 *
+	 * @param	string|int		$notifcode		Code of action in llx_c_action_trigger or rowid for old usage
+	 * @param	string			$object_type	Object type used to fetch email templates
+	 * @param	CommonObject	$object			Object the notification deals on
+	 * @return	array{template_const:string,template_label:string,notification_context:string}
+	 */
+	protected function getNotificationEmailTemplateInfo($notifcode, $object_type, $object)
+	{
+		global $hookmanager, $action;
+
+		$notificationcontext = '';
+		if (is_object($object) && !empty($object->context) && is_array($object->context) && !empty($object->context['notification_context'])) {
+			$context = strtoupper(trim((string) $object->context['notification_context']));
+			if (preg_match('/^[A-Z0-9_]+$/', $context) && in_array($context, $this->getNotificationContextsForCode($notifcode), true)) {
+				$notificationcontext = $context;
+			}
+		}
+
+		$templateconst = ((string) $notifcode).'_TEMPLATE';
+		$templatelabel = getDolGlobalString($templateconst);
+
+		if ($notificationcontext !== '') {
+			$contexttemplateconst = ((string) $notifcode).'_'.$notificationcontext.'_TEMPLATE';
+			$contexttemplatelabel = getDolGlobalString($contexttemplateconst);
+			if ($contexttemplatelabel !== '') {
+				$templateconst = $contexttemplateconst;
+				$templatelabel = $contexttemplatelabel;
+			}
+		}
+
+		$parameters = array(
+			'notifcode' => $notifcode,
+			'object_type' => $object_type,
+			'notification_context' => $notificationcontext,
+			'template_const' => $templateconst,
+			'template_label' => $templatelabel,
+		);
+		$reshook = $hookmanager->executeHooks('selectNotificationEmailTemplate', $parameters, $object, $action);
+		if ($reshook >= 0) {
+			$templateconstfromhook = '';
+			if (isset($hookmanager->resArray['template_const'])) {
+				$templateconstfromhookvalue = $hookmanager->resArray['template_const'];
+				while (is_array($templateconstfromhookvalue)) {
+					$templateconstfromhookvalue = end($templateconstfromhookvalue);
+				}
+				$templateconstfromhook = (string) $templateconstfromhookvalue;
+			}
+			if ($templateconstfromhook !== '' && preg_match('/^[A-Z0-9_]+_TEMPLATE$/', $templateconstfromhook)) {
+				$templateconst = $templateconstfromhook;
+				$templatelabel = getDolGlobalString($templateconst);
+			}
+
+			$templatelabelfromhook = '';
+			if (isset($hookmanager->resArray['template_label'])) {
+				$templatelabelfromhookvalue = $hookmanager->resArray['template_label'];
+				while (is_array($templatelabelfromhookvalue)) {
+					$templatelabelfromhookvalue = end($templatelabelfromhookvalue);
+				}
+				$templatelabelfromhook = (string) $templatelabelfromhookvalue;
+			}
+			if ($templatelabelfromhook !== '') {
+				$templatelabel = $templatelabelfromhook;
+			}
+		}
+
+		return array(
+			'template_const' => $templateconst,
+			'template_label' => $templatelabel,
+			'notification_context' => $notificationcontext,
+		);
+	}
+
 
 	/**
 	 *  Return message that say how many notification (and to which email) will occurs on requested event.
@@ -954,8 +1094,9 @@ class Notify
 						$formmail = new FormMail($this->db);
 						$arraydefaultmessage = null;
 
-						$template = $notifcode.'_TEMPLATE';
-						$labeltouse = getDolGlobalString($template);
+						$templateinfo = $this->getNotificationEmailTemplateInfo($notifcode, $object_type, $object);
+						$template = $templateinfo['template_const'];
+						$labeltouse = $templateinfo['template_label'];
 						if (!empty($labeltouse)) {
 							$arraydefaultmessage = $formmail->getEMailTemplate($this->db, $object_type, $user, $outputlangs, 0, 1, $labeltouse);
 						}
@@ -992,7 +1133,7 @@ class Notify
 						$sendto = $this->replaceSpecialRecipientToken($sendto, '__SUPERVISOREMAIL__', $this->getSupervisorEmail(1));
 						$sendto = $this->replaceSpecialRecipientToken($sendto, '__AUTHOREMAIL__', $this->getAuthorEmail($object, 1));
 
-						$parameters = array('notifcode' => $notifcode, 'sendto' => $sendto, 'from' => $from, 'file' => $filename_list, 'mimefile' => $mimetype_list, 'filename' => $mimefilename_list, 'outputlangs' => $outputlangs, 'labeltouse' => $labeltouse);
+						$parameters = array('notifcode' => $notifcode, 'sendto' => $sendto, 'from' => $from, 'file' => $filename_list, 'mimefile' => $mimetype_list, 'filename' => $mimefilename_list, 'outputlangs' => $outputlangs, 'labeltouse' => $labeltouse, 'template_const' => $template, 'notification_context' => $templateinfo['notification_context']);
 						if (!isset($action)) {
 							$action = '';
 						}
@@ -1250,7 +1391,7 @@ class Notify
 						$link = '<a href="'.$urlwithroot.'/contrat/card.php?id='.$object->id.'&entity='.$object->entity.'">'.$newref.'</a>';
 						$context_info = array_key_exists('signature', $object->context) ? $object->getLibSignedStatus() : '';
 						$dir_output = $conf->contract->multidir_output;
-						$object_type = 'contrat';
+						$object_type = 'contract';
 						$mesg = $langs->transnoentitiesnoconv("EMailTextContractModified", $link, $context_info);
 						break;
 					default:
@@ -1276,7 +1417,8 @@ class Notify
 
 				// if an e-mail template is configured for this notification code (for instance 'SHIPPING_VALIDATE_TEMPLATE', ...),
 				// we fetch this template by its label. Otherwise, a default message content will be sent.
-				$mailTemplateLabel = getDolGlobalString($notifcode.'_TEMPLATE');
+				$templateinfo = $this->getNotificationEmailTemplateInfo($notifcode, $object_type, $object);
+				$mailTemplateLabel = $templateinfo['template_label'];
 				$emailTemplate = null;
 				if (!empty($mailTemplateLabel)) {
 					include_once DOL_DOCUMENT_ROOT.'/core/class/html.formmail.class.php';
@@ -1313,7 +1455,7 @@ class Notify
 				$sendto = $this->replaceSpecialRecipientToken($sendto, '__AUTHOREMAIL__', $this->getAuthorEmail($object, 1));
 
 				if ($sendto) {
-					$parameters = array('notifcode' => $notifcode, 'sendto' => $sendto, 'from' => $from, 'file' => $filename_list, 'mimefile' => $mimetype_list, 'filename' => $mimefilename_list, 'subject' => &$subject, 'message' => &$message);
+					$parameters = array('notifcode' => $notifcode, 'sendto' => $sendto, 'from' => $from, 'file' => $filename_list, 'mimefile' => $mimetype_list, 'filename' => $mimefilename_list, 'subject' => &$subject, 'message' => &$message, 'labeltouse' => $mailTemplateLabel, 'template_const' => $templateinfo['template_const'], 'notification_context' => $templateinfo['notification_context']);
 					$reshook = $hookmanager->executeHooks('formatNotificationMessage', $parameters, $object, $action); // Note that $action and $object may have been modified by some hooks
 					if (empty($reshook)) {
 						if (!empty($hookmanager->resArray['files'])) {

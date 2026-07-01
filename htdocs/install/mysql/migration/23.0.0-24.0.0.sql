@@ -224,6 +224,7 @@ INSERT IGNORE INTO llx_c_action_trigger (code,label,description,elementtype,rang
 INSERT IGNORE INTO llx_c_action_trigger (code,label,description,elementtype,rang) VALUES ('STOCKTRANSFER_VALIDATE','Stock transfer validated','Executed when a stock transfer is validated','stocktransfer',672);
 INSERT IGNORE INTO llx_c_action_trigger (code,label,description,elementtype,rang) VALUES ('STOCKTRANSFER_UNVALIDATE','Stock transfer back to draft','Executed when a stock transfer is set back to draft','stocktransfer',673);
 INSERT IGNORE INTO llx_c_action_trigger (code,label,description,elementtype,rang) VALUES ('STOCKTRANSFER_CLOSE','Stock transfer closed','Executed when a stock transfer is closed after destination stock increment','stocktransfer',676);
+UPDATE llx_c_action_trigger SET contexts = 'SIGNATURE_SIGNED,SIGNATURE_UNSIGNED,SERVICE_ACTIVATED,SERVICE_CLOSED' WHERE code = 'CONTRACT_MODIFY';
 
 ALTER TABLE llx_c_ticket_category ADD COLUMN fk_ticket_type integer NULL;
 

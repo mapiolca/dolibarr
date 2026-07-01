@@ -446,6 +446,15 @@ class Contrat extends CommonObject
 			}
 		}
 
+		if (!$error && !$notrigger) {
+			$this->context['contract_service_status'] = 'activate_all';
+			$this->context['notification_context'] = 'SERVICE_ACTIVATED';
+			$result = $this->call_trigger('CONTRACT_MODIFY', $user);
+			if ($result < 0) {
+				$error++;
+			}
+		}
+
 		if (!$error) {
 			$this->db->commit();
 			return 1;
@@ -501,6 +510,15 @@ class Contrat extends CommonObject
 
 		if (!$error && $this->status == 0) {
 			$result = $this->validate($user, '', $notrigger);
+			if ($result < 0) {
+				$error++;
+			}
+		}
+
+		if (!$error && !$notrigger) {
+			$this->context['contract_service_status'] = 'close_all';
+			$this->context['notification_context'] = 'SERVICE_CLOSED';
+			$result = $this->call_trigger('CONTRACT_MODIFY', $user);
 			if ($result < 0) {
 				$error++;
 			}

@@ -97,7 +97,7 @@ insert into llx_c_action_trigger (code,label,description,elementtype,rang) value
 insert into llx_c_action_trigger (code,label,description,elementtype,rang) values ('BILL_SUPPLIER_DELETE','Supplier invoice deleted','Executed when a supplier invoice is deleted','invoice_supplier',87);
 
 insert into llx_c_action_trigger (code,label,description,elementtype,rang) values ('CONTRACT_VALIDATE','Contract validated','Executed when a contract is validated','contrat',90);
-insert into llx_c_action_trigger (code,label,description,elementtype,rang) values ('CONTRACT_MODIFY','Contract modified','Executed when a contract is modified','contrat',91);
+insert into llx_c_action_trigger (code,contexts,label,description,elementtype,rang) values ('CONTRACT_MODIFY','SIGNATURE_SIGNED,SIGNATURE_UNSIGNED,SERVICE_ACTIVATED,SERVICE_CLOSED','Contract modified','Executed when a contract is modified','contrat',91);
 insert into llx_c_action_trigger (code,label,description,elementtype,rang) values ('CONTRACT_SENTBYMAIL','Contract sent by mail','Executed when a contract is sent by mail','contrat',92);
 insert into llx_c_action_trigger (code,label,description,elementtype,rang) values ('CONTRACT_DELETE','Contract deleted','Executed when a contract is deleted','contrat',93);
 

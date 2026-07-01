@@ -90,30 +90,6 @@ trait CommonSignedObject
 	 */
 	public function setSignedStatus(User $user, int $status = 0, int $notrigger = 0, string $triggercode = ''): int
 	{
-		global $langs;
-
-		$langs->loadLangs(array('commercial'));
-
-		$this->signed_status = $status;
-		$this->context['signature'] = $status;
-
-		switch ($status) {
-			case 0:
-				$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('UnsignedInDolibarr');
-				break;
-			case 1:
-				$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('SignedSender');
-				break;
-			case 2:
-				$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('SignedReceiver');
-				break;
-			case 3:
-				$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('SignedReceiverOnline');
-				break;
-			case 9:
-				$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('SignedAll');
-				break;
-		}
 		return $this->setSignedStatusCommon($user, $status, $notrigger, $triggercode);
 	}
 
@@ -134,6 +110,9 @@ trait CommonSignedObject
 		$error = 0;
 
 		if ($this instanceof CommonObject) {
+			$oldstatus = (int) $this->signed_status;
+			$oldcontext = $this->context;
+
 			$this->db->begin();
 			$statusfield = 'signed_status';
 
@@ -141,8 +120,31 @@ trait CommonSignedObject
 			$sql .= " SET ".$this->db->sanitize($statusfield)." = ".((int) $status);
 			$sql .= " WHERE rowid = ".((int) $this->id);
 
+			$this->oldcopy = clone $this;
 			if ($this->db->query($sql)) {
-				$this->oldcopy = clone $this;
+				$this->signed_status = $status;
+				$this->context['signature'] = $status;
+				$this->context['signature_status_old'] = $oldstatus;
+				$this->context['signature_status_new'] = $status;
+				$this->context['notification_context'] = ($status == self::$SIGNED_STATUSES['STATUS_NO_SIGNATURE']) ? 'SIGNATURE_UNSIGNED' : 'SIGNATURE_SIGNED';
+
+				switch ($status) {
+					case 0:
+						$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('UnsignedInDolibarr');
+						break;
+					case 1:
+						$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('SignedSender');
+						break;
+					case 2:
+						$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('SignedReceiver');
+						break;
+					case 3:
+						$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('SignedReceiverOnline');
+						break;
+					case 9:
+						$this->context['actionmsg2'] = $langs->transnoentitiesnoconv('SignedAll');
+						break;
+				}
 
 				if (!$notrigger) {
 					// Call trigger
@@ -153,13 +155,14 @@ trait CommonSignedObject
 				}
 
 				if (!$error) {
-					$this->signed_status = $status;
 					$this->db->commit();
 
 					setEventMessages($langs->transnoentitiesnoconv($status == 0 ? 'DocumentUnsigned' : 'DocumentSigned'), null, 'warnings');
 					return 1;
 				} else {
 					$this->db->rollback();
+					$this->signed_status = $oldstatus;
+					$this->context = $oldcontext;
 					return -1;
 				}
 			} else {

@@ -328,10 +328,19 @@ foreach ($listofnotifiedevents as $notifiedevent) {
 	} elseif ($notifiedevent['elementtype'] == 'member') {
 		$model = 'member';
 	} elseif ($notifiedevent['elementtype'] == 'contrat') {
-		$model = 'contract_send';
+		$model = 'contract';
 	}
 
 	$constantes[$notifiedevent['code'].'_TEMPLATE'] = array('type'=>'emailtemplate:'.$model, 'label'=>$label);
+	$notificationcontextcodes = Notify::parseNotificationContextCodes($notifiedevent['contexts']);
+	foreach ($notificationcontextcodes as $notificationcontextcode) {
+		$contextlabelkey = 'Notify_'.$notifiedevent['code'].'_'.$notificationcontextcode;
+		$contextlabel = $langs->trans($contextlabelkey);
+		if ($contextlabel == $contextlabelkey) {
+			$contextlabel = $label.' - '.$notificationcontextcode;
+		}
+		$constantes[$notifiedevent['code'].'_'.$notificationcontextcode.'_TEMPLATE'] = array('type'=>'emailtemplate:'.$model, 'label'=>$contextlabel);
+	}
 }
 
 $helptext = $langs->trans("EmailTemplateHelp", $langs->transnoentitiesnoconv("Tools"), $langs->transnoentitiesnoconv("EMailTemplates"));
