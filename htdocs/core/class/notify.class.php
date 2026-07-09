@@ -687,7 +687,7 @@ class Notify
 		// Check notification per third party @phan-suppress-next-line PhanUndeclaredProperty
 		if (!empty($object->socid) && $object->socid > 0) {
 			$sql .= "SELECT 'tocontactid' as type_target, c.email, c.rowid as cid, c.lastname, c.firstname, c.default_lang,";
-			$sql .= " a.rowid as adid, a.label, a.code, n.rowid, n.threshold, n.context, n.type";
+			$sql .= " a.rowid as adid, a.label, a.code, a.elementtype, n.rowid, n.threshold, n.context, n.type";
 			$sql .= " FROM ".$this->db->prefix()."socpeople as c,";
 			$sql .= " ".$this->db->prefix()."c_action_trigger as a,";
 			$sql .= " ".$this->db->prefix()."notify_def as n,";
@@ -708,7 +708,7 @@ class Notify
 
 		// Check notification per user
 		$sql .= "SELECT 'touserid' as type_target, c.email, c.rowid as cid, c.lastname, c.firstname, c.lang as default_lang,";
-		$sql .= " a.rowid as adid, a.label, a.code, n.rowid, n.threshold, n.context, n.type";
+		$sql .= " a.rowid as adid, a.label, a.code, a.elementtype, n.rowid, n.threshold, n.context, n.type";
 		$sql .= " FROM ".$this->db->prefix()."user as c,";
 		$sql .= " ".$this->db->prefix()."c_action_trigger as a,";
 		$sql .= " ".$this->db->prefix()."notify_def as n";
@@ -943,8 +943,7 @@ class Notify
 								$mesg = $outputlangs->transnoentitiesnoconv("EMailTextContractModified", $link, $context_info);
 								break;
 							default:
-								$object_type = $object->element;
-								$dir_output = $conf->$object_type->multidir_output[$object->entity ? $object->entity : $conf->entity]."/".get_exdir(0, 0, 0, 1, $object, $object_type);
+								list($object_type, $dir_output) = $this->getNotificationObjectTypeAndOutputDir($object, $obj->elementtype);
 								$template = $notifcode.'_TEMPLATE';
 								$mesg = $outputlangs->transnoentitiesnoconv('Notify_'.$notifcode).' '.$newref.' '.$dir_output;
 								break;
@@ -976,7 +975,7 @@ class Notify
 						}
 
 						$ref = dol_sanitizeFileName($newref);
-						$pdf_path = $dir_output."/".$ref.".pdf";
+						$pdf_path = empty($dir_output) ? '' : $dir_output."/".$ref.".pdf";
 						if (!dol_is_file($pdf_path) || (is_object($arraydefaultmessage) && $arraydefaultmessage->id > 0 && !$arraydefaultmessage->joinfiles)) {
 							// We can't add PDF as it is not generated yet.
 							$filepdf = '';
@@ -1091,6 +1090,7 @@ class Notify
 				if ($notifcodedefid <= 0) {
 					dol_print_error($this->db, 'Failed to get id from code');
 				}
+				$notifcodeelementtype = $this->getNotificationTriggerElementType($notifcode);
 				$trackid = '';
 
 				$object_type = '';
@@ -1254,13 +1254,12 @@ class Notify
 						$mesg = $langs->transnoentitiesnoconv("EMailTextContractModified", $link, $context_info);
 						break;
 					default:
-						$object_type = $object->element;
-						$dir_output = $conf->$object_type->multidir_output[$object->entity ? $object->entity : $conf->entity]."/".get_exdir(0, 0, 0, 1, $object, $object_type);
+						list($object_type, $dir_output) = $this->getNotificationObjectTypeAndOutputDir($object, $notifcodeelementtype);
 						$mesg = $langs->transnoentitiesnoconv('Notify_'.$notifcode).' '.$newref;
 						break;
 				}
 				$ref = dol_sanitizeFileName($newref);
-				$pdf_path = $dir_output."/".$ref.".pdf";
+				$pdf_path = empty($dir_output) ? '' : $dir_output."/".$ref.".pdf";
 				if (!dol_is_file($pdf_path)) {
 					// We can't add PDF as it is not generated yet.
 					$filepdf = '';
@@ -1373,6 +1372,71 @@ class Notify
 		} else {
 			return -1 * $error;
 		}
+	}
+
+	/**
+	 * Return object type used for email template lookup and output directory for a notification.
+	 *
+	 * @param	CommonObject	$object			Object notified
+	 * @param	string			$elementtype	Element type declared in c_action_trigger
+	 * @return	array{0:string,1:string}			Object type, output directory
+	 */
+	private function getNotificationObjectTypeAndOutputDir($object, $elementtype = '')
+	{
+		$objecttype = '';
+		if (is_object($object) && !empty($object->element)) {
+			$objecttype = (string) $object->element;
+		}
+		if (!empty($elementtype) && strpos($elementtype, '@') !== false) {
+			$objecttype = $elementtype;
+		}
+
+		$diroutput = '';
+		if (is_object($object) && !empty($objecttype)) {
+			$module = $objecttype;
+			$reg = array();
+			if (preg_match('/^([^@]+)@([^@]+)$/', $objecttype, $reg)) {
+				$module = $reg[2];
+			}
+			$diroutput = getMultidirOutput($object, $module, 1);
+			if (!is_string($diroutput) || strpos($diroutput, 'error-') === 0) {
+				$diroutput = '';
+			}
+			$diroutput = rtrim($diroutput, '/');
+		}
+
+		return array($objecttype, $diroutput);
+	}
+
+	/**
+	 * Return element type declared for a notification trigger.
+	 *
+	 * @param	string|int	$notifcode	Code or id of action in c_action_trigger
+	 * @return	string					Element type
+	 */
+	private function getNotificationTriggerElementType($notifcode)
+	{
+		if ($notifcode === '' || $notifcode === null) {
+			return '';
+		}
+
+		$sql = "SELECT elementtype";
+		$sql .= " FROM ".$this->db->prefix()."c_action_trigger";
+		if (is_numeric($notifcode)) {
+			$sql .= " WHERE rowid = ".((int) $notifcode);
+		} else {
+			$sql .= " WHERE code = '".$this->db->escape($notifcode)."'";
+		}
+
+		$resql = $this->db->query($sql);
+		if ($resql) {
+			$obj = $this->db->fetch_object($resql);
+			if (is_object($obj) && !empty($obj->elementtype)) {
+				return (string) $obj->elementtype;
+			}
+		}
+
+		return '';
 	}
 
 	/**
