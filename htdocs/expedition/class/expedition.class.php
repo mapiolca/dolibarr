@@ -2329,6 +2329,12 @@ class Expedition extends CommonObject
 				$originline = $obj->fk_elementdet;
 			}
 			$this->db->free($resql);
+
+			$result = $this->fetch_lines_free(true, false);
+			if ($result < 0) {
+				return $result;
+			}
+
 			return 1;
 		} else {
 			$this->error = $this->db->error();
@@ -2341,19 +2347,28 @@ class Expedition extends CommonObject
 	/**
 	 *	Load lines of simple shipment
 	 *
+	 *	@param	bool	$onlyfreelines	Only load shipment lines without an origin line
+	 *	@param	bool	$resetlines		Reset current lines before loading
 	 *	@return	int		>0 if OK, Otherwise if KO
 	 */
-	public function fetch_lines_free()
+	public function fetch_lines_free($onlyfreelines = false, $resetlines = true)
 	{
 		// phpcs:enable
 		global $mysoc;
 
-		$this->lines = array();
+		if ($resetlines) {
+			$this->lines = array();
+		}
 
 		$sql = 'SELECT ed.rowid, ed.fk_expedition, ed.fk_entrepot, ed.fk_product, ed.fk_unit, ed.description, ed.fk_elementdet, ed.fk_element, ed.element_type, ed.qty, ed.rang';
+		$sql .= ', p.ref as product_ref, p.label as product_label, p.fk_product_type, p.tobatch as product_tobatch, p.stockable_product';
+		$sql .= ', p.weight, p.weight_units, p.length, p.length_units, p.width, p.width_units, p.height, p.height_units, p.surface, p.surface_units, p.volume, p.volume_units';
 		$sql .= ' FROM '.MAIN_DB_PREFIX.$this->table_element_line.' as ed';
 		$sql .= ' LEFT JOIN '.MAIN_DB_PREFIX.'product as p ON (p.rowid = ed.fk_product)';
 		$sql .= ' WHERE ed.fk_expedition = '.((int) $this->id);
+		if ($onlyfreelines) {
+			$sql .= " AND (ed.fk_elementdet IS NULL OR ed.fk_elementdet = 0 OR ed.element_type = 'shipping')";
+		}
 		$sql .= ' ORDER BY ed.rang, ed.rowid';
 
 		dol_syslog(get_class($this)."::fetch_lines_free", LOG_DEBUG);
@@ -2361,6 +2376,7 @@ class Expedition extends CommonObject
 		if ($result) {
 			$num = $this->db->num_rows($result);
 
+			$lineindex = count($this->lines);
 			$i = 0;
 			while ($i < $num) {
 				$objp = $this->db->fetch_object($result);
@@ -2370,20 +2386,56 @@ class Expedition extends CommonObject
 				$line->rowid            = $objp->rowid;
 				$line->id				= $objp->rowid;
 				$line->fk_expedition	= $this->id;
+				$line->element          = $this->element;
 				$line->description      = $objp->description;
+				$line->desc             = $objp->description;
 				$line->qty              = $objp->qty;
+				$line->qty_asked        = $objp->qty;
 				$line->fk_entrepot      = $objp->fk_entrepot;
 				$line->fk_product       = $objp->fk_product;
+				$line->product_type     = $objp->fk_product_type;
+				$line->fk_product_type  = $objp->fk_product_type;
+				$line->ref              = $objp->product_ref;
+				$line->product_ref      = $objp->product_ref;
+				$line->product_label    = $objp->product_label;
+				$line->product_tobatch  = $objp->product_tobatch;
+				$line->stockable_product = $objp->stockable_product;
+				$line->qty_shipped      = $objp->qty;
+				$line->weight           = $objp->weight;
+				$line->weight_units     = $objp->weight_units;
+				$line->length           = $objp->length;
+				$line->length_units     = $objp->length_units;
+				$line->width            = $objp->width;
+				$line->width_units      = $objp->width_units;
+				$line->height           = $objp->height;
+				$line->height_units     = $objp->height_units;
+				$line->surface          = $objp->surface;
+				$line->surface_units    = $objp->surface_units;
+				$line->volume           = $objp->volume;
+				$line->volume_units     = $objp->volume_units;
+				$line->special_code     = 0;
+				$line->subprice         = 0;
+				$line->total_ht         = 0;
+				$line->total_tva        = 0;
+				$line->total_ttc        = 0;
 				$line->rang             = $objp->rang;
 				$line->fk_element 		= $objp->fk_element;
 				$line->fk_unit          = $objp->fk_unit;
 				$line->fk_elementdet 	= $objp->fk_elementdet;
 				$line->fk_element_type 	= $objp->element_type;
+
+				$detail_entrepot = new stdClass();
+				$detail_entrepot->entrepot_id = $objp->fk_entrepot;
+				$detail_entrepot->qty_shipped = $objp->qty;
+				$detail_entrepot->line_id = $objp->rowid;
+				$line->details_entrepot = array($detail_entrepot);
+
 				$line->fetch_optionals();
 
-				$this->lines[$i] = $line;
+				$this->lines[$lineindex] = $line;
 
 				$i++;
+				$lineindex++;
 			}
 
 			$this->db->free($result);
@@ -3138,14 +3190,13 @@ class Expedition extends CommonObject
 
 				// Loop on each product line to add a stock movement
 				// TODO possibilite d'expedier a partir d'une propale ou autre origine
-				$sql = "SELECT cd.fk_product, cd.subprice,";
+				$sql = "SELECT ed.fk_product, cd.subprice,";
 				$sql .= " ed.rowid, ed.qty, ed.fk_entrepot,";
 				$sql .= " edb.rowid as edbrowid, edb.eatby, edb.sellby, edb.batch, edb.qty as edbqty, edb.fk_origin_stock";
-				$sql .= " FROM ".MAIN_DB_PREFIX."commandedet as cd,";
-				$sql .= " ".MAIN_DB_PREFIX."expeditiondet as ed";
+				$sql .= " FROM ".MAIN_DB_PREFIX."expeditiondet as ed";
+				$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."commandedet as cd ON cd.rowid = ed.fk_elementdet";
 				$sql .= " LEFT JOIN ".MAIN_DB_PREFIX."expeditiondet_batch as edb on edb.fk_expeditiondet = ed.rowid";
 				$sql .= " WHERE ed.fk_expedition = ".((int) $this->id);
-				$sql .= " AND cd.rowid = ed.fk_elementdet";
 
 				dol_syslog(get_class($this)."::valid select details", LOG_DEBUG);
 				$resql = $this->db->query($sql);
