@@ -1,15 +1,15 @@
 <?php
-/* Copyright (C) 2004-2011  Laurent Destailleur     <eldy@users.sourceforge.net>
- * Copyright (C) 2006       Andre Cianfarani        <acianfa@free.fr>
- * Copyright (C) 2006-2007  Rodolphe Quiedeville    <rodolphe@quiedeville.org>
- * Copyright (C) 2007       Auguria SARL            <info@auguria.org>
- * Copyright (C) 2005-2012  Regis Houssin           <regis.houssin@inodbox.com>
- * Copyright (C) 2011-2012  Juanjo Menent           <jmenent@2byte.es>
- * Copyright (C) 2012       Christophe Battarel     <christophe.battarel@altairis.fr>
- * Copyright (C) 2012       Cedric Salvador         <csalvador@gpcsolutions.fr>
- * Copyright (C) 2016       Charlie Benke           <charlie@patas-monkey.com>
- * Copyright (C) 2016       Ferran Marcet           <fmarcet@2byte.es>
- * Copyright (C) 2024-2025  MDW                     <mdeweerd@users.noreply.github.com>
+/* Copyright (C) 2004-2026 Laurent Destailleur  <eldy@users.sourceforge.net>
+ * Copyright (C) 2006      Andre Cianfarani     <acianfa@free.fr>
+ * Copyright (C) 2006-2007 Rodolphe Quiedeville <rodolphe@quiedeville.org>
+ * Copyright (C) 2007      Auguria SARL         <info@auguria.org>
+ * Copyright (C) 2005-2012 Regis Houssin        <regis.houssin@inodbox.com>
+ * Copyright (C) 2011-2012 Juanjo Menent        <jmenent@2byte.es>
+ * Copyright (C) 2012      Christophe Battarel  <christophe.battarel@altairis.fr>
+ * Copyright (C) 2012      Cedric Salvador      <csalvador@gpcsolutions.fr>
+ * Copyright (C) 2016      Charlie Benke		<charlie@patas-monkey.com>
+ * Copyright (C) 2016	   Ferran Marcet		<fmarcet@2byte.es>
+ * Copyright (C) 2024-2026	MDW					<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024       Frédéric France         <frederic.france@free.fr>
  * Copyright (C) 2026       Alexandre Spangaro      <alexandre@inovea-conseil.com>
  *
@@ -29,7 +29,7 @@
 
 /**
  *  \file       htdocs/product/admin/product.php
- *  \ingroup    produit
+ *  \ingroup    product
  *  \brief      Setup page of product module
  */
 
@@ -237,8 +237,8 @@ if ($action == 'del') {
 // Set default model
 if ($action == 'setdoc') {
 	if (dolibarr_set_const($db, "PRODUCT_ADDON_PDF", $value, 'chaine', 0, '', $conf->entity)) {
-		// La constante qui a ete lue en avant du nouveau set
-		// on passe donc par une variable pour avoir un affichage coherent
+		// The constant that was read before the new set
+		// so we go through a variable to get a consistent display
 		$conf->global->PRODUCT_ADDON_PDF = $value;
 	}
 
@@ -339,8 +339,8 @@ foreach ($dirproduct as $dirroot) {
 	if (is_resource($handle)) {
 		// Loop on each module find in opened directory
 		while (($file = readdir($handle)) !== false) {
-			if (substr($file, 0, 16) == 'mod_codeproduct_' && substr($file, -3) == 'php') {
-				$file = substr($file, 0, dol_strlen($file) - 4);
+			if (dol_substr($file, 0, 16) == 'mod_codeproduct_' && dol_substr($file, -3) == 'php') {
+				$file = dol_substr($file, 0, dol_strlen($file) - 4);
 
 				try {
 					dol_include_once($dirroot.$file.'.php');
@@ -459,8 +459,8 @@ foreach ($dirmodels as $reldir) {
 				foreach ($filelist as $file) {
 					if (preg_match('/\.modules\.php$/i', $file) && preg_match('/^(pdf_|doc_)/', $file)) {
 						if (file_exists($dir.'/'.$file)) {
-							$name = substr($file, 4, dol_strlen($file) - 16);
-							$classname = substr($file, 0, dol_strlen($file) - 12);
+							$name = dol_substr($file, 4, dol_strlen($file) - 16);
+							$classname = dol_substr($file, 0, dol_strlen($file) - 12);
 
 							require_once $dir.'/'.$file;
 							$module = new $classname($db);
@@ -576,7 +576,6 @@ print '<tr class="oddeven">';
 print '<td>'.$langs->trans("AssociatedProductsAbility").'</td>';
 print '<td class="right">';
 print ajax_constantonoff("PRODUIT_SOUSPRODUITS", array(), $conf->entity, 0, 0, 1, 0);
-//print $form->selectyesno("PRODUIT_SOUSPRODUITS", $conf->global->PRODUIT_SOUSPRODUITS, 1);
 print '</td>';
 print '</tr>';
 
@@ -586,8 +585,6 @@ print '</tr>';
 print '<tr class="oddeven">';
 print '<td>'.$langs->trans("VariantsAbility").'</td>';
 print '<td class="right">';
-//print ajax_constantonoff("PRODUIT_SOUSPRODUITS", array(), $conf->entity, 0, 0, 1, 0);
-//print $form->selectyesno("PRODUIT_SOUSPRODUITS", $conf->global->PRODUIT_SOUSPRODUITS, 1);
 if (!isModEnabled('variants')) {
 	print '<span class="opacitymedium">'.$langs->trans("ModuleMustBeEnabled", $langs->transnoentitiesnoconv("Module610Name")).'</span>';
 } else {
@@ -627,7 +624,7 @@ print '</td>';
 print '</tr>';
 
 
-// multiprix nombre de prix a proposer
+// For multiprice mode, how many prices to show/manage
 if (getDolGlobalString('PRODUIT_MULTIPRICES') || getDolGlobalString('PRODUIT_CUSTOMER_PRICES_BY_QTY_MULTIPRICES') || getDolGlobalString('PRODUIT_CUSTOMER_PRICES_AND_MULTIPRICES')) {
 	print '<tr class="oddeven">';
 	print '<td>'.$langs->trans("MultiPricesNumPrices").'</td>';
@@ -706,10 +703,10 @@ if (empty($conf->use_javascript_ajax)) {
 } else {
 	print '<td class="right">';
 	$arrval = array(
-		'0' => $langs->trans("No"),
-		'1' => $langs->trans("Yes").' - <span class="opacitymedium">'.$langs->trans("NumberOfKeyToSearch", 1).'</span>',
-		'2' => $langs->trans("Yes").' - <span class="opacitymedium">'.$langs->trans("NumberOfKeyToSearch", 2).'</span>',
-		'3' => $langs->trans("Yes").' - <span class="opacitymedium">'.$langs->trans("NumberOfKeyToSearch", 3).'</span>',
+		0 => array('label' => $langs->trans("No")),
+		1 => array('label' => $langs->trans("Yes").' ('.$langs->trans("NumberOfKeyToSearch", 1).')', 'labelhtml' => $langs->trans("Yes").' <span class="opacitymedium small">('.$langs->trans("NumberOfKeyToSearch", 1).')</span>'),
+		2 => array('label' => $langs->trans("Yes").' ('.$langs->trans("NumberOfKeyToSearch", 2).')', 'labelhtml' => $langs->trans("Yes").' <span class="opacitymedium small">('.$langs->trans("NumberOfKeyToSearch", 2).')</span>'),
+		3 => array('label' => $langs->trans("Yes").' ('.$langs->trans("NumberOfKeyToSearch", 3).')', 'labelhtml' => $langs->trans("Yes").' <span class="opacitymedium small">('.$langs->trans("NumberOfKeyToSearch", 3).')</span>'),
 	);
 	print $form->selectarray("activate_usesearchtoselectproduct", $arrval, getDolGlobalInt('PRODUIT_USE_SEARCH_TO_SELECT'), 0, 0, 0, '', 0, 0, 0, '', 'minwidth125imp maxwidth400');
 	print '</td>';
@@ -731,7 +728,7 @@ print '<!-- PRODUIT_AUTOFILL_DESC -->';
 print $form->selectarray(
 	"activate_FillProductDescAuto",
 	array(0 => 'DoNotAutofillButAutoConcat', 1 => 'AutoFillFormFieldBeforeSubmit', 2 => 'DoNotUseDescriptionOfProdut'),
-	!getDolGlobalString('PRODUIT_AUTOFILL_DESC') ? 0 : $conf->global->PRODUIT_AUTOFILL_DESC,
+	getDolGlobalInt('PRODUIT_AUTOFILL_DESC'),
 	0,
 	0,
 	0,
@@ -746,7 +743,7 @@ print $form->selectarray(
 print '</td>';
 print '</tr>';
 
-// Visualiser description produit dans les formulaires activation/deactivation
+// Show (or not) the description of products into forms
 print '<tr class="oddeven">';
 print '<td>'.$langs->trans("ViewProductDescInFormAbility").'</td>';
 print '<td class="right">';
@@ -755,7 +752,7 @@ print $form->selectarray("PRODUIT_DESC_IN_FORM", $arrayofchoices, getDolGlobalIn
 print '</td>';
 print '</tr>';
 
-// Activate propal merge produt card
+// Activate propal merge product card
 /* Kept as hidden feature only. PRODUIT_PDF_MERGE_PROPAL can be added manually. Still did not understand how this feature works.
 
 print '<tr class="oddeven">';

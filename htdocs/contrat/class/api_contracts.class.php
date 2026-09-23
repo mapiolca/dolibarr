@@ -22,6 +22,7 @@ use Luracast\Restler\RestException;
 
 require_once DOL_DOCUMENT_ROOT.'/contrat/class/contrat.class.php';
 require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/company.lib.php';
 
 /**
  * API class for contracts
@@ -104,7 +105,7 @@ class Contracts extends DolibarrApi
 	 * @param int			   $limit				Limit for list
 	 * @param int			   $page				Page number
 	 * @param string		   $thirdparty_ids		Thirdparty ids to filter contracts of (example '1' or '1,2,3') {@pattern /^[0-9,]*$/i}
-	 * @param string           $sqlfilters          Other criteria to filter answers separated by a comma. Syntax example "(t.ref:like:'SO-%') and (t.date_creation:<:'20160101')"
+	 * @param string           $sqlfilters          Other criteria to filter answers separated by a comma. Syntax example "(t.ref:like:'SO-%') and (t.date_creation:>:'20160101')"
 	 * @param string		   $properties			Restrict the data returned to these properties. Ignored if empty. Comma separated list of properties names
 	 * @param bool             $pagination_data     If this parameter is set to true the response will include pagination data. Default value is false. Page starts from 0*
 	 * @param bool 			   $withLines 			true or false to display or hide lines
@@ -146,9 +147,9 @@ class Contracts extends DolibarrApi
 		// Search on sale representative
 		if ($search_sale && $search_sale != '-1') {
 			if ($search_sale == -2) {
-				$sql .= " AND NOT EXISTS (SELECT sc.fk_soc FROM ".MAIN_DB_PREFIX."societe_commerciaux as sc WHERE sc.fk_soc = t.fk_soc)";
+				$sql .= " AND ".getSalesRepresentativeSqlFilter('t.fk_soc', 0, 1);
 			} elseif ($search_sale > 0) {
-				$sql .= " AND EXISTS (SELECT sc.fk_soc FROM ".MAIN_DB_PREFIX."societe_commerciaux as sc WHERE sc.fk_soc = t.fk_soc AND sc.fk_user = ".((int) $search_sale).")";
+				$sql .= " AND ".getSalesRepresentativeSqlFilter('t.fk_soc', (int) $search_sale);
 			}
 		}
 		// Add sql filters
@@ -293,7 +294,7 @@ class Contracts extends DolibarrApi
 	 * @param string	$sortorder			Sort order
 	 * @param int		$limit				Limit for list
 	 * @param int		$page				Page number
-	 * @param string	$sqlfilters			Other criteria to filter answers separated by a comma. Syntax example "(t.ref:like:'SO-%') and (t.date_creation:<:'20160101')"
+	 * @param string	$sqlfilters			Other criteria to filter answers separated by a comma. Syntax example "(t.ref:like:'SO-%') and (t.date_creation:>:'20160101')"
 	 * @param string 	$properties 		Restrict the data returned to these properties. Ignored if empty. Comma separated list of properties names
 	 * @param bool 		$pagination_data 	If this parameter is set to true the response will include pagination data. Default value is false. Page starts from 0*
 	 * @return array						Array of contrat det objects
@@ -469,6 +470,14 @@ class Contracts extends DolibarrApi
 
 		if (!DolibarrApi::_checkAccessToResource('contrat', $this->contract->id)) {
 			throw new RestException(403, 'Access to this contract is not allowed for login '.DolibarrApiAccess::$user->login);
+		}
+
+		$contractline = new ContratLigne($this->db);
+		if ($contractline->fetch($lineid) <= 0) {
+			throw new RestException(404, 'Contract line not found');
+		}
+		if ($contractline->fk_contrat != $this->contract->id) {
+			throw new RestException(403, 'Line does not belong to this contract');
 		}
 
 		$request_data = (object) $request_data;
@@ -703,7 +712,13 @@ class Contracts extends DolibarrApi
 			throw new RestException(403, 'Access to this contract is not allowed for login '.DolibarrApiAccess::$user->login);
 		}
 
-		// TODO Check the lineid $lineid is a line of object
+		$contractline = new ContratLigne($this->db);
+		if ($contractline->fetch($lineid) <= 0) {
+			throw new RestException(404, 'Contract line not found');
+		}
+		if ($contractline->fk_contrat != $this->contract->id) {
+			throw new RestException(403, 'Line does not belong to this contract');
+		}
 
 		$updateRes = $this->contract->deleteLine($lineid, DolibarrApiAccess::$user);
 		if ($updateRes > 0) {
@@ -777,7 +792,7 @@ class Contracts extends DolibarrApi
 
 			if ($field == 'array_options' && is_array($value)) {
 				foreach ($value as $index => $val) {
-					$this->contract->array_options[$index] = $this->_checkValForAPI($field, $val, $this->contract);
+					$this->contract->array_options[$index] = $this->_checkValExtrafieldsForAPI($index, $val, $this->contract);
 				}
 				continue;
 			}

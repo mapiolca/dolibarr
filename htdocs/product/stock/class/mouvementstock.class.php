@@ -665,7 +665,16 @@ class MouvementStock extends CommonObject
 				// having a lot1/qty=X and lot2/qty=-X, so 0 but we must not loose repartition of different lot.
 				$sql = "DELETE FROM ".$this->db->prefix()."product_stock WHERE reel = 0 AND rowid NOT IN (SELECT fk_product_stock FROM ".$this->db->prefix()."product_batch as pb)";
 				$resql = $this->db->query($sql);
-				// We do not test error, it can fails if there is child in batch details
+				// The NOT IN clause already excludes rows still referenced by product_batch (the only child FK on
+				// product_stock), so this DELETE cannot fail on a child constraint. Any failure is therefore a real
+				// error, in particular a deadlock (1213) that rolls back the whole transaction including the movement
+				// just inserted; if we swallowed it, _create() would commit an empty transaction and return the
+				// movement id as a success, so the caller (and the REST API) would think the movement was saved while
+				// it was lost.
+				if (!$resql) {
+					$this->errors[] = $this->db->lasterror();
+					$error++;
+				}
 			}
 		}
 
@@ -901,7 +910,7 @@ class MouvementStock extends CommonObject
 	 *
 	 * @param 	int			$productidselected		Id of product to count
 	 * @param 	integer 	$datebefore				Date limit
-	 * @return	int			Number
+	 * @return	float		Number
 	 */
 	public function calculateBalanceForProductBefore($productidselected, $datebefore)
 	{
@@ -916,7 +925,7 @@ class MouvementStock extends CommonObject
 		if ($resql) {
 			$obj = $this->db->fetch_object($resql);
 			if ($obj) {
-				$nb = (int) $obj->nb;
+				$nb = (float) $obj->nb;
 			}
 			return (empty($nb) ? 0 : $nb);
 		} else {
@@ -1133,25 +1142,25 @@ class MouvementStock extends CommonObject
 		$s = '';
 		switch ($this->type) {
 			case "0":
-				$s = '<span class="fa fa-level-down-alt stockmovemententry stockmovementtransfer" title="'.$langs->trans('StockIncreaseAfterCorrectTransfer').'"></span>';
+				$s = '<span class="invertforbadge"><span class="fa fa-level-down-alt stockmovemententry stockmovementtransfer" title="'.$langs->trans('StockIncreaseAfterCorrectTransfer').'"></span></span>';
 				if ($withlabel) {
 					$s .= $langs->trans('StockIncreaseAfterCorrectTransfer');
 				}
 				break;
 			case "1":
-				$s = '<span class="fa fa-level-up-alt stockmovementexit stockmovementtransfer" title="'.$langs->trans('StockDecreaseAfterCorrectTransfer').'"></span>';
+				$s = '<span class="invertforbadge"><span class="fa fa-level-up-alt stockmovementexit stockmovementtransfer" title="'.$langs->trans('StockDecreaseAfterCorrectTransfer').'"></span></span>';
 				if ($withlabel) {
 					$s .= $langs->trans('StockDecreaseAfterCorrectTransfer');
 				}
 				break;
 			case "2":
-				$s = '<span class="fa fa-long-arrow-alt-up stockmovementexit stockmovement" title="'.$langs->trans('StockDecrease').'"></span>';
+				$s = '<span class="invertforbadge"><span class="fa fa-long-arrow-alt-up stockmovementexit stockmovement" title="'.$langs->trans('StockDecrease').'"></span></span>';
 				if ($withlabel) {
 					$s .= $langs->trans('StockDecrease');
 				}
 				break;
 			case "3":
-				$s = '<span class="fa fa-long-arrow-alt-down stockmovemententry stockmovement" title="'.$langs->trans('StockIncrease').'"></span>';
+				$s = '<span class="invertforbadge"><span class="fa fa-long-arrow-alt-down stockmovemententry stockmovement" title="'.$langs->trans('StockIncrease').'"></span></span>';
 				if ($withlabel) {
 					$s .= $langs->trans('StockIncrease');
 				}
@@ -1214,6 +1223,17 @@ class MouvementStock extends CommonObject
 			}
 		}
 		$result .= $link.$this->id.$linkend;
+
+		global $action, $hookmanager;
+		$hookmanager->initHooks(array($this->element . 'dao'));
+		$parameters = array('id' => $this->id, 'getnomurl' => &$result);
+		$reshook = $hookmanager->executeHooks('getNomUrl', $parameters, $this, $action); // Note that $action and $object may have been modified by some hooks
+		if ($reshook > 0) {
+			$result = $hookmanager->resPrint;
+		} else {
+			$result .= $hookmanager->resPrint;
+		}
+
 		return $result;
 	}
 

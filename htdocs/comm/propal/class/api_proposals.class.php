@@ -4,7 +4,7 @@
  * Copyright (C) 2020       Thibault FOUCART        <support@ptibogxiv.net>
  * Copyright (C) 2022       ATM Consulting          <contact@atm-consulting.fr>
  * Copyright (C) 2022       OpenDSI                 <support@open-dsi.fr>
- * Copyright (C) 2024-2025	MDW						<mdeweerd@users.noreply.github.com>
+ * Copyright (C) 2024-2026	MDW						<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024-2025  Frédéric France			<frederic.france@free.fr>
  * Copyright (C) 2025		William Mead			<william@m34d.com>
  * Copyright (C) 2025		Charlene Benke			<charlene@patas-monkey.com>
@@ -26,6 +26,7 @@
 use Luracast\Restler\RestException;
 
 require_once DOL_DOCUMENT_ROOT.'/comm/propal/class/propal.class.php';
+require_once DOL_DOCUMENT_ROOT.'/core/lib/company.lib.php';
 
 
 /**
@@ -216,9 +217,9 @@ class Proposals extends DolibarrApi
 		// Search on sale representative
 		if ($search_sale && $search_sale != '-1') {
 			if ($search_sale == -2) {
-				$sql .= " AND NOT EXISTS (SELECT sc.fk_soc FROM ".MAIN_DB_PREFIX."societe_commerciaux as sc WHERE sc.fk_soc = t.fk_soc)";
+				$sql .= " AND ".getSalesRepresentativeSqlFilter('t.fk_soc', 0, 1);
 			} elseif ($search_sale > 0) {
-				$sql .= " AND EXISTS (SELECT sc.fk_soc FROM ".MAIN_DB_PREFIX."societe_commerciaux as sc WHERE sc.fk_soc = t.fk_soc AND sc.fk_user = ".((int) $search_sale).")";
+				$sql .= " AND ".getSalesRepresentativeSqlFilter('t.fk_soc', (int) $search_sale);
 			}
 		}
 		$parameters = array();
@@ -609,6 +610,10 @@ class Proposals extends DolibarrApi
 			throw new RestException(404, 'Proposal line not found');
 		}
 
+		if ($propalline->fk_propal != $id) {
+			throw new RestException(403, 'Line does not belong to this proposal');
+		}
+
 		$updateRes = $this->propal->updateline(
 			$lineid,
 			isset($request_data->subprice) ? $request_data->subprice : $propalline->subprice,
@@ -931,7 +936,7 @@ class Proposals extends DolibarrApi
 			}
 			if ($field == 'array_options' && is_array($value)) {
 				foreach ($value as $index => $val) {
-					$this->propal->array_options[$index] = $this->_checkValForAPI($field, $val, $this->propal);
+					$this->propal->array_options[$index] = $this->_checkValExtrafieldsForAPI($index, $val, $this->propal);
 				}
 				continue;
 			}
@@ -941,7 +946,7 @@ class Proposals extends DolibarrApi
 
 		// update end of validity date
 		if (empty($this->propal->fin_validite) && !empty($this->propal->duree_validite) && !empty($this->propal->date_creation)) {
-			$this->propal->fin_validite = $this->propal->date_creation + ($this->propal->duree_validite * 24 * 3600);
+			$this->propal->fin_validite = $this->propal->date_creation + (int) ($this->propal->duree_validite * 24 * 3600);
 		}
 		if (!empty($this->propal->fin_validite)) {
 			if ($this->propal->set_echeance(DolibarrApiAccess::$user, $this->propal->fin_validite) < 0) {

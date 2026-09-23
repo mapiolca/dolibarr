@@ -1,6 +1,7 @@
 <?php
 /* Copyright (C) 2017       Laurent Destailleur     <eldy@users.sourceforge.net>
  * Copyright (C) 2024-2025  Frédéric France         <frederic.france@free.fr>
+ * Copyright (C) 2025		Anthony Berton 			<anthony.berton@bb2a.fr>
  * Copyright (C) ---Replace with your own copyright and developer email---
  *
  * This program is free software; you can redistribute it and/or modify
@@ -55,8 +56,8 @@ if (!$res && !empty($_SERVER["CONTEXT_DOCUMENT_ROOT"])) {
 // Try main.inc.php into web root detected using web root calculated from SCRIPT_FILENAME
 $tmp = empty($_SERVER['SCRIPT_FILENAME']) ? '' : $_SERVER['SCRIPT_FILENAME'];
 $tmp2 = realpath(__FILE__);
-$i = strlen($tmp) - 1;
-$j = strlen($tmp2) - 1;
+$i = strlen($tmp) - 1;  // @phan-suppress-current-line DolibarrForbiddenFunctionPlugin
+$j = strlen($tmp2) - 1;  // @phan-suppress-current-line DolibarrForbiddenFunctionPlugin
 while ($i > 0 && $j > 0 && isset($tmp[$i]) && isset($tmp2[$j]) && $tmp[$i] == $tmp2[$j]) {
 	$i--;
 	$j--;
@@ -89,6 +90,7 @@ if (!$res) {
  * @var User $user
  * @var Societe $mysoc
  */
+require_once DOL_DOCUMENT_ROOT . '/core/lib/functions.lib.php';
 include_once DOL_DOCUMENT_ROOT.'/core/class/html.formcompany.class.php';
 include_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php';
 include_once DOL_DOCUMENT_ROOT.'/core/class/html.formprojet.class.php';
@@ -210,8 +212,10 @@ if (empty($reshook)) {
 	// Actions when printing a doc from card
 	include DOL_DOCUMENT_ROOT.'/core/actions_printing.inc.php';
 
+	//BEGIN MODULEBUILDER LINES
 	// Action to move up and down lines of object
-	//include DOL_DOCUMENT_ROOT.'/core/actions_lineupdown.inc.php';
+	include DOL_DOCUMENT_ROOT.'/core/actions_lineupdown.inc.php';
+	//END MODULEBUILDER LINES
 
 	// Action to build doc
 	include DOL_DOCUMENT_ROOT.'/core/actions_builddoc.inc.php';
@@ -265,7 +269,6 @@ llxHeader('', $title, $help_url, '', 0, 0, '', '', '', 'mod-mymodule page-card')
 // 	});
 // });
 // </script>';
-
 
 // Part to create
 if ($action == 'create') {
@@ -346,20 +349,18 @@ if (($id || $ref) && $action == 'edit') {
 
 // Part to show record
 if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'create'))) {
-	$head = myobjectPrepareHead($object);
-
-	print dol_get_fiche_head($head, 'card', $langs->trans("MyObject"), -1, $object->picto, 0, '', '', 0, '', 1);
-
 	$formconfirm = '';
 
 	// Confirmation to delete (using preloaded confirm popup)
 	if ($action == 'delete' || ($conf->use_javascript_ajax && empty($conf->dol_use_jmobile))) {
 		$formconfirm = $form->formconfirm($_SERVER["PHP_SELF"].'?id='.$object->id, $langs->trans('DeleteMyObject'), $langs->trans('ConfirmDeleteObject'), 'confirm_delete', '', 0, 'action-delete');
 	}
+	//BEGIN MODULEBUILDER LINES
 	// Confirmation to delete line
 	if ($action == 'deleteline') {
 		$formconfirm = $form->formconfirm($_SERVER["PHP_SELF"].'?id='.$object->id.'&lineid='.$lineid, $langs->trans('DeleteLine'), $langs->trans('ConfirmDeleteLine'), 'confirm_deleteline', '', 0, 1);
 	}
+	//END MODULEBUILDER LINES
 
 	// Clone confirmation
 	if ($action == 'clone') {
@@ -375,7 +376,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 	// 		require_once DOL_DOCUMENT_ROOT . '/core/class/notify.class.php';
 	// 		$notify = new Notify($db);
 	// 		$text .= '<br>';
-	// 		$text .= $notify->confirmMessage('MYOBJECT_CLOSE', $object->socid, $object);
+	// 		$text .= $notify->confirmMessage('MYMODULE_MYOBJECT_CLOSE', $object->socid, $object);
 	// 	}
 
 	// 	$formquestion = array();
@@ -404,8 +405,15 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 	print $formconfirm;
 
 
+
+	$head = myobjectPrepareHead($object);
+
+	print dol_get_fiche_head($head, 'card', $langs->trans("MyObject"), -1, $object->picto, 0, '', '', 0, '', 1);
+
+
 	// Object card
 	// ------------------------------------------------------------
+
 	$linkback = '<a href="'.dol_buildpath('/mymodule/myobject_list.php', 1).'?restore_lastsearch_values=1'.(!empty($socid) ? '&socid='.$socid : '').'">'.$langs->trans("BackToList").'</a>';
 
 	$morehtmlref = '<div class="refidno">';
@@ -445,7 +453,6 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 
 	dol_banner_tab($object, 'ref', $linkback, 1, 'ref', 'ref', $morehtmlref);
 
-
 	print '<div class="fichecenter">';
 	print '<div class="fichehalfleft">';
 	print '<div class="underbanner clearboth"></div>';
@@ -468,7 +475,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 
 	print dol_get_fiche_end();
 
-
+	//BEGIN MODULEBUILDER LINES
 	/*
 	 * Lines
 	 */
@@ -521,8 +528,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 
 		print "</form>\n";
 	}
-
-
+	//END MODULEBUILDER LINES
 	// Buttons for actions
 
 	if ($action != 'presend' && $action != 'editline') {
@@ -559,7 +565,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 
 			// Clone
 			if ($permissiontoadd) {
-				print dolGetButtonAction('', $langs->trans('ToClone'), 'default', $_SERVER['PHP_SELF'].'?id='.$object->id.(!empty($object->socid) ? '&socid='.$object->socid : '').'&action=clone&token='.newToken(), '', $permissiontoadd);
+				print dolGetButtonAction('', $langs->trans('ToClone'), 'clone', $_SERVER['PHP_SELF'].'?id='.$object->id.(!empty($object->socid) ? '&socid='.$object->socid : '').'&action=clone&token='.newToken(), '', $permissiontoadd);
 			}
 
 			/*
@@ -613,7 +619,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 			$urlsource = $_SERVER["PHP_SELF"]."?id=".$object->id;
 			$genallowed = $permissiontoread; // If you can read, you can build the PDF to read content
 			$delallowed = $permissiontoadd; // If you can create/edit, you can remove a file on card
-			print $formfile->showdocuments('mymodule:MyObject', $object->element.'/'.$objref, $filedir, $urlsource, $genallowed, $delallowed, $object->model_pdf, 1, 0, 0, 28, 0, '', '', '', $langs->defaultlang);
+			print $formfile->showdocuments($object->element.'@'.$object->module, $objref, $filedir, $urlsource, $genallowed, $delallowed, $object->model_pdf, 1, 0, 0, 28, 0, '', '', '', $langs->defaultlang);
 		}
 
 		// Show links to link elements
@@ -630,6 +636,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 
 		print '</div><div class="fichehalfright">';
 
+		// BEGIN MODULEBUILDER TAB AGENDA
 		$MAXEVENT = 10;
 
 		$morehtmlcenter = dolGetButtonTitle($langs->trans('SeeAll'), '', 'fa fa-bars imgforviewmode', dol_buildpath('/mymodule/myobject_agenda.php', 1).'?id='.$object->id);
@@ -642,6 +649,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 			$formactions = new FormActions($db);
 			$somethingshown = $formactions->showactions($object, $object->element.'@'.$object->module, (is_object($object->thirdparty) ? $object->thirdparty->id : 0), 1, '', $MAXEVENT, '', $morehtmlcenter);
 		}
+		// END MODULEBUILDER TAB AGENDA
 
 		print '</div></div>';
 	}

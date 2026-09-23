@@ -49,7 +49,7 @@ $langs->loadLangs(array("admin", "errors"));
 
 $action = GETPOST('action', 'aZ09');
 
-if (!isset($conf->global->GEOIP_VERSION)) {
+if (!getDolGlobalString("GEOIP_VERSION")) {
 	$conf->global->GEOIP_VERSION = '2';
 }
 
@@ -145,7 +145,7 @@ if ($datafile) {
 }
 
 // Mode
-print '<form action="'.$_SERVER["PHP_SELF"].'" enctype="multipart/form-data" method="post">';
+print '<form action="'.$_SERVER["PHP_SELF"].'" enctype="multipart/form-data" method="post" spellcheck="false">';
 print '<input type="hidden" name="token" value="'.newToken().'">';
 print '<input type="hidden" name="action" value="set">';
 
@@ -318,7 +318,7 @@ print '</div>';
 if ($geoip) {
 	print '<br>';
 
-	print '<form action="'.$_SERVER["PHP_SELF"].'" method="post">';
+	print '<form action="'.$_SERVER["PHP_SELF"].'" method="post" spellcheck="false">';
 	print '<input type="hidden" name="token" value="'.newToken().'">';
 
 	$ip = '24.24.24.24';

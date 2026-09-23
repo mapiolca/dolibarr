@@ -2,7 +2,7 @@
 /* Copyright (C) 2019-2020	Laurent Destailleur			<eldy@users.sourceforge.net>
  * Copyright (C) 2023		Christian Humpel			<christian.humpel@gmail.com>
  * Copyright (C) 2023		Vincent de Grandpré			<vincent@de-grandpre.quebec>
- * Copyright (C) 2024-2025  Frédéric France             <frederic.france@free.fr>
+ * Copyright (C) 2024-2026  Frédéric France             <frederic.france@free.fr>
  * Copyright (C) 2024-2025	MDW							<mdeweerd@users.noreply.github.com>
  * Copyright (C) 2024		Alexandre Spangaro			<alexandre@inovea-conseil.com>
  * Copyright (C) 2025		Noé Cendrier		 <noe.cendrier@altairis.fr>
@@ -29,6 +29,14 @@
 
 // Load Dolibarr environment
 require '../main.inc.php';
+/**
+ * @var Conf $conf
+ * @var DoliDB $db
+ * @var ExtraFields $extrafields
+ * @var HookManager $hookmanager
+ * @var Translate $langs
+ * @var User $user
+ */
 require_once DOL_DOCUMENT_ROOT.'/bom/class/bom.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formcompany.class.php';
 require_once DOL_DOCUMENT_ROOT.'/core/class/html.formfile.class.php';
@@ -42,15 +50,6 @@ require_once DOL_DOCUMENT_ROOT.'/product/stock/class/entrepot.class.php';
 require_once DOL_DOCUMENT_ROOT.'/product/stock/class/productlot.class.php';
 require_once DOL_DOCUMENT_ROOT.'/product/stock/class/mouvementstock.class.php';
 require_once DOL_DOCUMENT_ROOT.'/workstation/class/workstation.class.php';
-
-
-/**
- * @var Conf $conf
- * @var DoliDB $db
- * @var HookManager $hookmanager
- * @var Translate $langs
- * @var User $user
- */
 
 // Load translation files required by the page
 $langs->loadLangs(array("mrp", "stocks", "other", "product", "productbatch"));
@@ -71,7 +70,6 @@ $collapse = GETPOST('collapse', 'aZ09comma');
 
 // Initialize a technical objects
 $object = new Mo($db);
-$extrafields = new ExtraFields($db);
 $diroutputmassaction = $conf->mrp->dir_output.'/temp/massgeneration/'.$user->id;
 $objectline = new MoLine($db);
 
@@ -320,12 +318,12 @@ if (empty($reshook)) {
 						if (GETPOSTISSET('idwarehouse-'.$line->id.'-'.$i)) {	// If there is a warehouse to set
 							if (!(GETPOST('idwarehouse-'.$line->id.'-'.$i) > 0)) {	// If there is no warehouse set.
 								$langs->load("errors");
-								setEventMessages($langs->trans("ErrorFieldRequiredForProduct", $langs->transnoentitiesnoconv("Warehouse"), $tmpproduct->ref), null, 'errors');
+								setEventMessages($langs->trans("ErrorFieldRequiredForProduct", $langs->transnoentitiesnoconv("Warehouse"), (string) $tmpproduct->ref), null, 'errors');
 								$error++;
 							}
 							if ($tmpproduct->status_batch && (!GETPOST('batch-'.$line->id.'-'.$i))) {
 								$langs->load("errors");
-								setEventMessages($langs->trans("ErrorFieldRequiredForProduct", $langs->transnoentitiesnoconv("Batch"), $tmpproduct->ref), null, 'errors');
+								setEventMessages($langs->trans("ErrorFieldRequiredForProduct", $langs->transnoentitiesnoconv("Batch"), (string) $tmpproduct->ref), null, 'errors');
 								$error++;
 							}
 						}
@@ -780,7 +778,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 	print dol_get_fiche_end();
 
 
-	if (!in_array($action, array('consumeorproduce', 'consumeandproduceall'))) {
+	if (!in_array($action, array('consumeorproduce', 'consumeandproduceall', 'editline'))) {
 		print '<div class="tabsAction">';
 
 		$parameters = array();
@@ -2040,7 +2038,7 @@ if ($object->id > 0 && (empty($action) || ($action != 'edit' && $action != 'crea
 		print "</form>\n";
 	} ?>
 
-		<script  type="text/javascript" language="javascript">
+		<script type="text/javascript">
 
 			$(document).ready(function() {
 				//Consumption : When a warehouse is selected, only the lot/serial numbers that are available in it are offered

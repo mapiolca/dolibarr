@@ -87,6 +87,8 @@ $hookmanager->initHooks(array('warehousecard', 'stocklist', 'globalcard'));
 // Security check
 $result=restrictedArea($user, 'stock', $id, 'entrepot&stock');
 
+$usercancreadsupplierprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? $user->hasRight('product', 'product_advance', 'read_supplier_prices') : $user->hasRight('product', 'read');
+
 $object = new Entrepot($db);
 $extrafields = new ExtraFields($db);
 
@@ -380,12 +382,12 @@ if ($action == 'create') {
 
 	// Phone / Fax
 	print '<tr><td class="titlefieldcreate">'.$form->editfieldkey('Phone', 'phone', '', $object, 0).'</td><td>';
-	print img_picto('', 'object_phoning', 'class="pictofixedwidth"');
-	print '<input name="phone" size="20" value="'.$object->phone.'"></td></tr>';
+	print $form->showPhoneInput($object->phone, 'phone', $object->country_id, 'object_phoning', 'maxwidth150 widthcentpercentminusx');
+	print '</td></tr>';
 	print '<tr><td class="titlefieldcreate">'.$form->editfieldkey('Fax', 'fax', '', $object, 0).'</td>';
 	print '<td>';
-	print img_picto('', 'object_phoning_fax', 'class="pictofixedwidth"');
-	print '<input name="fax" size="20" value="'.$object->fax.'"></td></tr>';
+	print $form->showPhoneInput($object->fax, 'fax', $object->country_id, 'object_phoning_fax', 'maxwidth150 widthcentpercentminusx');
+	print '</td></tr>';
 
 	// Warehouse usage
 	if (getDolGlobalInt("MAIN_FEATURES_LEVEL")) {
@@ -556,9 +558,11 @@ if ($action == 'create') {
 			print '<table class="border centpercent tableforfield">';
 
 			// Value
-			print '<tr><td class="titlefield">'.$langs->trans("EstimatedStockValueShort").'</td><td>';
-			print price((empty($calcproducts['value']) ? '0' : price2num($calcproducts['value'], 'MT')), 0, $langs, 0, -1, -1, $conf->currency);
-			print "</td></tr>";
+			if ($usercancreadsupplierprice) {
+				print '<tr><td class="titlefield">'.$langs->trans("EstimatedStockValueShort").'</td><td>';
+				print price((empty($calcproducts['value']) ? '0' : price2num($calcproducts['value'], 'MT')), 0, $langs, 0, -1, -1, $conf->currency);
+				print "</td></tr>";
+			}
 
 			// Last movement
 			if ($user->hasRight('stock', 'mouvement', 'lire')) {
@@ -662,7 +666,6 @@ if ($action == 'create') {
 				$totalarray['pos'][$totalarray['nbfield']] = 'units';
 				$totalarray['type'][$totalarray['nbfield']] = 'string';
 			}
-			$usercancreadsupplierprice = getDolGlobalString('MAIN_USE_ADVANCED_PERMS') ? $user->hasRight('product', 'product_advance', 'read_supplier_prices') : $user->hasRight('product', 'read');
 			if ($usercancreadsupplierprice) {
 				print_liste_field_titre($form->textwithpicto($langs->trans("AverageUnitPricePMPShort"), $langs->trans("AverageUnitPricePMPDesc")), "", "p.pmp", "", "&id=".$object->id, '', $sortfield, $sortorder, 'right ');
 				$totalarray['nbfield']++;
@@ -987,11 +990,11 @@ if ($action == 'create') {
 
 			// Phone / Fax
 			print '<tr><td class="titlefieldcreate">'.$form->editfieldkey('Phone', 'phone', '', $object, 0).'</td><td>';
-			print img_picto('', 'object_phoning', 'class="pictofixedwidth"');
-			print '<input name="phone" size="20" value="'.$object->phone.'"></td></tr>';
+			print $form->showPhoneInput($object->phone, 'phone', $object->country_id, 'object_phoning', 'maxwidth150 widthcentpercentminusx');
+			print '</td></tr>';
 			print '<tr><td class="titlefieldcreate">'.$form->editfieldkey('Fax', 'fax', '', $object, 0).'</td><td>';
-			print img_picto('', 'object_phoning_fax', 'class="pictofixedwidth"');
-			print '<input name="fax" size="20" value="'.$object->fax.'"></td></tr>';
+			print $form->showPhoneInput($object->fax, 'fax', $object->country_id, 'object_phoning_fax', 'maxwidth150 widthcentpercentminusx');
+			print '</td></tr>';
 
 			// Status
 			print '<tr><td>'.$langs->trans("Status").'</td><td>';
@@ -1046,7 +1049,7 @@ if ($action != 'create' && $action != 'edit' && $action != 'delete') {
 	print '<a name="builddoc"></a>'; // ancre
 
 	// Documents
-	$objectref = dol_sanitizeFileName($object->ref);
+	$objectref = dol_sanitizeFileName((string) $object->ref);
 	$relativepath = $object->ref.'/'.$objectref.'.pdf';
 	$filedir = $conf->stock->dir_output.'/'.$objectref;
 	$urlsource = $_SERVER["PHP_SELF"]."?id=".$object->id;
