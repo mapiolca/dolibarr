@@ -1,3 +1,4 @@
+-- Copyright (C) 2026 Pierre Ardoin <developpeur@lesmetiersdubatiment.fr>
 --
 -- This file is executed by calling /install/index.php page
 -- when current version is higher than the name of this file.
