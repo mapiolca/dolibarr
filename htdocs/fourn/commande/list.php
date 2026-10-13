@@ -242,19 +242,10 @@ include DOL_DOCUMENT_ROOT.'/core/tpl/extrafields_list_array_fields.tpl.php';
 $canreadprojects = isModEnabled('project') && $user->hasRight('projet', 'lire');
 $projectcolumnenabled = $canreadprojects ? '1' : '0';
 $langs->load('projects');
-$projectrefdefinitions = array_values(array_intersect_key($arrayfields, array('cf.fk_projet' => 1)));
-$projectlabeldefinitions = array_values(array_intersect_key($arrayfields, array('p.title' => 1)));
-$projectrefdefinition = array_shift($projectrefdefinitions) ?: array();
-$projectlabeldefinition = array_shift($projectlabeldefinitions) ?: array();
-$projectrefdefinition += array('checked' => '0', 'position' => 190, 'help' => '');
-$projectlabeldefinition += array('checked' => '0', 'help' => '');
-$projectrefposition = is_numeric($projectrefdefinition['position']) ? (int) $projectrefdefinition['position'] : 190;
-$projectcolumns = array(
-	'cf.fk_projet' => array('label' => 'RefProject', 'langfile' => 'projects', 'checked' => (string) $projectrefdefinition['checked'], 'enabled' => $projectcolumnenabled, 'position' => $projectrefposition, 'help' => (string) $projectrefdefinition['help']),
-	'p.title' => array('label' => 'ProjectLabel', 'langfile' => 'projects', 'checked' => (string) $projectlabeldefinition['checked'], 'enabled' => $projectcolumnenabled, 'position' => $projectrefposition + 1, 'help' => (string) $projectlabeldefinition['help']),
-);
-$arrayfields['cf.fk_projet'] = $projectcolumns['cf.fk_projet'];
-$arrayfields['p.title'] = $projectcolumns['p.title'];
+$arrayfields = array_merge($arrayfields, array(
+	'cf.fk_projet' => array('label' => 'RefProject', 'langfile' => 'projects', 'checked' => '0', 'enabled' => $projectcolumnenabled, 'position' => 190, 'help' => ''),
+	'p.title' => array('label' => 'ProjectLabel', 'langfile' => 'projects', 'checked' => '0', 'enabled' => $projectcolumnenabled, 'position' => 191, 'help' => ''),
+));
 
 $search_projectlist_ref = GETPOST('search_projectlist_ref', 'alphanohtml');
 $search_projectlist_title = GETPOST('search_projectlist_title', 'alphanohtml');
