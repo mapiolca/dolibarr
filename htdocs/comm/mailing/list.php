@@ -120,19 +120,10 @@ include DOL_DOCUMENT_ROOT.'/core/tpl/extrafields_list_array_fields.tpl.php';
 $canreadprojects = isModEnabled('project') && $user->hasRight('projet', 'lire');
 $projectcolumnenabled = $canreadprojects ? '1' : '0';
 $langs->load('projects');
-$projectrefdefinitions = array_values(array_intersect_key($arrayfields, array('m.fk_project' => 1)));
-$projectlabeldefinitions = array_values(array_intersect_key($arrayfields, array('pr.title' => 1)));
-$projectrefdefinition = array_shift($projectrefdefinitions) ?: array();
-$projectlabeldefinition = array_shift($projectlabeldefinitions) ?: array();
-$projectrefdefinition += array('checked' => '1', 'position' => 190, 'help' => '');
-$projectlabeldefinition += array('checked' => '0', 'help' => '');
-$projectrefposition = is_numeric($projectrefdefinition['position']) ? (int) $projectrefdefinition['position'] : 190;
-$projectcolumns = array(
-	'm.fk_project' => array('label' => 'RefProject', 'langfile' => 'projects', 'checked' => (string) $projectrefdefinition['checked'], 'enabled' => $projectcolumnenabled, 'position' => $projectrefposition, 'help' => (string) $projectrefdefinition['help']),
-	'pr.title' => array('label' => 'ProjectLabel', 'langfile' => 'projects', 'checked' => (string) $projectlabeldefinition['checked'], 'enabled' => $projectcolumnenabled, 'position' => $projectrefposition + 1, 'help' => (string) $projectlabeldefinition['help']),
-);
-$arrayfields['m.fk_project'] = $projectcolumns['m.fk_project'];
-$arrayfields['pr.title'] = $projectcolumns['pr.title'];
+$arrayfields = array_merge($arrayfields, array(
+	'm.fk_project' => array('label' => 'RefProject', 'langfile' => 'projects', 'checked' => '1', 'enabled' => $projectcolumnenabled, 'position' => 190, 'help' => ''),
+	'pr.title' => array('label' => 'ProjectLabel', 'langfile' => 'projects', 'checked' => '0', 'enabled' => $projectcolumnenabled, 'position' => 191, 'help' => ''),
+));
 
 $search_projectlist_ref = GETPOST('search_projectlist_ref', 'alphanohtml');
 $search_projectlist_title = GETPOST('search_projectlist_title', 'alphanohtml');
